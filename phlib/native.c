@@ -2278,12 +2278,23 @@ NTSTATUS PhLoadDllProcess(
     )
 {
     NTSTATUS status;
+    PROCESS_BASIC_INFORMATION basicInfo;
     SIZE_T fileNameAllocationSize = 0;
     PVOID fileNameBaseAddress = NULL;
     PVOID loadLibraryW = NULL;
     HANDLE threadHandle = NULL;
     HANDLE powerRequestHandle = NULL;
     PPH_PROCESS_RUNTIME_LIBRARY runtimeLibrary;
+
+    status = PhGetProcessBasicInformation(ProcessHandle, &basicInfo);
+
+    if (!NT_SUCCESS(status))
+        return status;
+
+    if (basicInfo.UniqueProcessId == NtCurrentProcessId())
+    {
+        return STATUS_ACCESS_DENIED;
+    }
 
     if (KphProcessLevel(ProcessHandle) > KphLevelMed)
     {
@@ -4388,6 +4399,88 @@ NTSTATUS PhpQueryFileVariableSize(
     return status;
 }
 
+NTSTATUS PhpQueryFileByNameVariableSize(
+    _In_ PPH_STRINGREF FileName,
+    _In_ FILE_INFORMATION_CLASS FileInformationClass,
+    _Out_ PVOID *Buffer
+    )
+{
+    NTSTATUS status;
+    UNICODE_STRING fileName;
+    OBJECT_ATTRIBUTES objectAttributes;
+    IO_STATUS_BLOCK statusBlock;
+    PVOID buffer;
+    ULONG bufferSize;
+
+    if (WindowsVersion < WINDOWS_10_RS3)
+    {
+        HANDLE fileHandle;
+
+        status = PhCreateFile(
+            &fileHandle,
+            FileName,
+            FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+            FILE_ATTRIBUTE_NORMAL,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            FILE_OPEN,
+            FILE_SYNCHRONOUS_IO_NONALERT
+            );
+
+        if (NT_SUCCESS(status))
+        {
+            status = PhpQueryFileVariableSize(fileHandle, FileInformationClass, Buffer);
+            NtClose(fileHandle);
+        }
+
+        return status;
+    }
+
+    PhStringRefToUnicodeString(FileName, &fileName);
+    InitializeObjectAttributes(
+        &objectAttributes,
+        &fileName,
+        OBJ_CASE_INSENSITIVE,
+        NULL,
+        NULL
+        );
+
+    bufferSize = 0x200;
+    buffer = PhAllocate(bufferSize);
+
+    while (TRUE)
+    {
+        status = NtQueryInformationByName_Import()(
+            &objectAttributes,
+            &statusBlock,
+            buffer,
+            bufferSize,
+            FileInformationClass
+            );
+
+        if (status == STATUS_BUFFER_OVERFLOW || status == STATUS_BUFFER_TOO_SMALL || status == STATUS_INFO_LENGTH_MISMATCH)
+        {
+            PhFree(buffer);
+            bufferSize *= 2;
+            buffer = PhAllocate(bufferSize);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (NT_SUCCESS(status))
+    {
+        *Buffer = buffer;
+    }
+    else
+    {
+        PhFree(buffer);
+    }
+
+    return status;
+}
+
 NTSTATUS PhGetFileBasicInformation(
     _In_ HANDLE FileHandle,
     _Out_ PFILE_BASIC_INFORMATION BasicInfo
@@ -5844,7 +5937,7 @@ BOOLEAN NTAPI PhpEnumProcessModulesCallback(
 {
     PPH_ENUM_PROCESS_MODULES_PARAMETERS parameters = Context1;
     NTSTATUS status;
-    BOOLEAN cont;
+    BOOLEAN result;
     PPH_STRING mappedFileName = NULL;
     PWSTR fullDllNameOriginal;
     PWSTR fullDllNameBuffer = NULL;
@@ -5957,7 +6050,7 @@ BOOLEAN NTAPI PhpEnumProcessModulesCallback(
     }
 
     // Execute the callback.
-    cont = parameters->Callback(Entry, parameters->Context);
+    result = parameters->Callback(Entry, parameters->Context);
 
     if (mappedFileName)
     {
@@ -5971,7 +6064,7 @@ BOOLEAN NTAPI PhpEnumProcessModulesCallback(
             PhFree(baseDllNameBuffer);
     }
 
-    return cont;
+    return result;
 }
 
 /**
@@ -6203,7 +6296,7 @@ BOOLEAN NTAPI PhpEnumProcessModules32Callback(
 {
     static PH_STRINGREF system32String = PH_STRINGREF_INIT(L"\\System32\\");
     PPH_ENUM_PROCESS_MODULES_PARAMETERS parameters = Context1;
-    BOOLEAN cont;
+    BOOLEAN result;
     LDR_DATA_TABLE_ENTRY nativeEntry;
     PPH_STRING mappedFileName;
     PWSTR baseDllNameBuffer = NULL;
@@ -6375,7 +6468,7 @@ BOOLEAN NTAPI PhpEnumProcessModules32Callback(
     }
 
     // Execute the callback.
-    cont = parameters->Callback(&nativeEntry, parameters->Context);
+    result = parameters->Callback(&nativeEntry, parameters->Context);
 
     if (mappedFileName)
     {
@@ -6389,7 +6482,7 @@ BOOLEAN NTAPI PhpEnumProcessModules32Callback(
             PhFree(fullDllNameBuffer);
     }
 
-    return cont;
+    return result;
 }
 
 /**
@@ -8259,7 +8352,7 @@ NTSTATUS PhEnumDirectoryObjects(
     ULONG bufferSize;
     POBJECT_DIRECTORY_INFORMATION buffer;
     ULONG i;
-    BOOLEAN cont;
+    BOOLEAN result;
 
     bufferSize = 0x200;
     buffer = PhAllocate(bufferSize);
@@ -8304,7 +8397,7 @@ NTSTATUS PhEnumDirectoryObjects(
         // Read the batch and execute the callback function for each object.
 
         i = 0;
-        cont = TRUE;
+        result = TRUE;
 
         while (TRUE)
         {
@@ -8320,15 +8413,15 @@ NTSTATUS PhEnumDirectoryObjects(
             PhUnicodeStringToStringRef(&info->Name, &name);
             PhUnicodeStringToStringRef(&info->TypeName, &typeName);
 
-            cont = Callback(&name, &typeName, Context);
+            result = Callback(&name, &typeName, Context);
 
-            if (!cont)
+            if (!result)
                 break;
 
             i++;
         }
 
-        if (!cont)
+        if (!result)
             break;
 
         if (status != STATUS_MORE_ENTRIES)
@@ -8374,7 +8467,7 @@ NTSTATUS PhEnumDirectoryFileEx(
     PVOID buffer;
     ULONG bufferSize = 0x400;
     ULONG i;
-    BOOLEAN cont;
+    BOOLEAN result;
 
     buffer = PhAllocate(bufferSize);
 
@@ -8431,7 +8524,7 @@ NTSTATUS PhEnumDirectoryFileEx(
         // Read the batch and execute the callback function for each file. (wj32)
 
         i = 0;
-        cont = TRUE;
+        result = TRUE;
 
         while (TRUE)
         {
@@ -8439,7 +8532,7 @@ NTSTATUS PhEnumDirectoryFileEx(
 
             if (!Callback(FileHandle, information, Context))
             {
-                cont = FALSE;
+                result = FALSE;
                 break;
             }
 
@@ -8449,7 +8542,7 @@ NTSTATUS PhEnumDirectoryFileEx(
                 break;
         }
 
-        if (!cont)
+        if (!result)
             break;
 
         firstTime = FALSE;
@@ -9938,7 +10031,7 @@ static BOOLEAN EnumGenericProcessModulesCallback(
 {
     PENUM_GENERIC_PROCESS_MODULES_CONTEXT context = Context;
     PH_MODULE_INFO moduleInfo;
-    BOOLEAN cont;
+    BOOLEAN result;
 
     if (WindowsVersion >= WINDOWS_11_24H2)
     {
@@ -9987,12 +10080,12 @@ static BOOLEAN EnumGenericProcessModulesCallback(
         moduleInfo.LoadTime.QuadPart = 0;
     }
 
-    cont = context->Callback(&moduleInfo, context->Context);
+    result = context->Callback(&moduleInfo, context->Context);
 
     PhDereferenceObject(moduleInfo.Name);
     PhDereferenceObject(moduleInfo.FileName);
 
-    return cont;
+    return result;
 }
 
 VOID PhpRtlModulesToGenericModules(
@@ -10005,7 +10098,7 @@ VOID PhpRtlModulesToGenericModules(
     PRTL_PROCESS_MODULE_INFORMATION module;
     ULONG i;
     PH_MODULE_INFO moduleInfo;
-    BOOLEAN cont;
+    BOOLEAN result;
 
     for (i = 0; i < Modules->NumberOfModules; i++)
     {
@@ -10064,12 +10157,12 @@ VOID PhpRtlModulesToGenericModules(
             PhMoveReference(&moduleInfo.FileName, newFileName);
         }
 
-        cont = Callback(&moduleInfo, Context);
+        result = Callback(&moduleInfo, Context);
 
         PhDereferenceObject(moduleInfo.Name);
         PhDereferenceObject(moduleInfo.FileName);
 
-        if (!cont)
+        if (!result)
             break;
     }
 }
@@ -10083,7 +10176,7 @@ VOID PhpRtlModulesExToGenericModules(
 {
     PRTL_PROCESS_MODULE_INFORMATION_EX module = Modules;
     PH_MODULE_INFO moduleInfo;
-    BOOLEAN cont;
+    BOOLEAN result;
 
     while (module->NextOffset != 0)
     {
@@ -10140,12 +10233,12 @@ VOID PhpRtlModulesExToGenericModules(
             PhMoveReference(&moduleInfo.FileName, newFileName);
         }
 
-        cont = Callback(&moduleInfo, Context);
+        result = Callback(&moduleInfo, Context);
 
         PhDereferenceObject(moduleInfo.Name);
         PhDereferenceObject(moduleInfo.FileName);
 
-        if (!cont)
+        if (!result)
             break;
 
         module = PTR_ADD_OFFSET(module, module->NextOffset);
@@ -10163,7 +10256,7 @@ BOOLEAN PhpCallbackMappedFileOrImage(
     )
 {
     PH_MODULE_INFO moduleInfo;
-    BOOLEAN cont;
+    BOOLEAN result;
 
     RtlZeroMemory(&moduleInfo, sizeof(PH_MODULE_INFO));
 
@@ -10181,12 +10274,12 @@ BOOLEAN PhpCallbackMappedFileOrImage(
     moduleInfo.ParentBaseAddress = NULL;
     moduleInfo.OriginalBaseAddress = NULL;
 
-    cont = Callback(&moduleInfo, Context);
+    result = Callback(&moduleInfo, Context);
 
     PhDereferenceObject(moduleInfo.FileName);
     PhDereferenceObject(moduleInfo.Name);
 
-    return cont;
+    return result;
 }
 
 VOID PhpEnumGenericMappedFilesAndImages(
@@ -10223,7 +10316,7 @@ VOID PhpEnumGenericMappedFilesAndImages(
         SIZE_T allocationSize;
         ULONG type;
         PPH_STRING fileName;
-        BOOLEAN cont;
+        BOOLEAN result;
 
         if (basicInfo.Type == MEM_MAPPED || basicInfo.Type == MEM_IMAGE)
         {
@@ -10280,7 +10373,7 @@ VOID PhpEnumGenericMappedFilesAndImages(
 
             PhAddEntryHashtable(BaseAddressHashtable, &allocationBase);
 
-            cont = PhpCallbackMappedFileOrImage(
+            result = PhpCallbackMappedFileOrImage(
                 allocationBase,
                 allocationSize,
                 type,
@@ -10290,7 +10383,7 @@ VOID PhpEnumGenericMappedFilesAndImages(
                 BaseAddressHashtable
                 );
 
-            if (!cont)
+            if (!result)
                 break;
         }
         else
@@ -13063,6 +13156,140 @@ NTSTATUS PhMoveFileWin32(
             &newFileHandle,
             NewFileName,
             FILE_GENERIC_WRITE,
+            &newFileSize,
+            FILE_ATTRIBUTE_NORMAL,
+            FILE_SHARE_READ,
+            FailIfExists ? FILE_CREATE : FILE_OVERWRITE_IF,
+            FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT | FILE_SEQUENTIAL_ONLY,
+            NULL
+            );
+
+        if (NT_SUCCESS(status))
+        {
+            buffer = PhAllocatePage(PAGE_SIZE * 2, NULL);
+
+            if (!buffer)
+            {
+                status = STATUS_NO_MEMORY;
+                goto CleanupExit;
+            }
+
+            while (TRUE)
+            {
+                status = NtReadFile(
+                    fileHandle,
+                    NULL,
+                    NULL,
+                    NULL,
+                    &isb,
+                    buffer,
+                    PAGE_SIZE * 2,
+                    NULL,
+                    NULL
+                    );
+
+                if (!NT_SUCCESS(status))
+                    break;
+                if (isb.Information == 0)
+                    break;
+
+                status = NtWriteFile(
+                    newFileHandle,
+                    NULL,
+                    NULL,
+                    NULL,
+                    &isb,
+                    buffer,
+                    (ULONG)isb.Information,
+                    NULL,
+                    NULL
+                    );
+
+                if (!NT_SUCCESS(status))
+                    break;
+                if (isb.Information == 0)
+                    break;
+            }
+
+            PhFreePage(buffer);
+
+            if (status == STATUS_END_OF_FILE)
+            {
+                status = STATUS_SUCCESS;
+            }
+
+            if (status != STATUS_SUCCESS)
+            {
+                PhSetFileDelete(newFileHandle);
+            }
+
+            NtClose(newFileHandle);
+        }
+    }
+
+CleanupExit:
+    NtClose(fileHandle);
+    PhFree(renameInfo);
+
+    return status;
+}
+
+NTSTATUS PhMoveFile(
+    _In_ PPH_STRINGREF OldFileName,
+    _In_ PPH_STRINGREF NewFileName,
+    _In_ BOOLEAN FailIfExists
+    )
+{
+    NTSTATUS status;
+    HANDLE fileHandle;
+    IO_STATUS_BLOCK isb;
+    ULONG renameInfoLength;
+    PFILE_RENAME_INFORMATION renameInfo;
+
+    status = PhCreateFile(
+        &fileHandle,
+        OldFileName,
+        FILE_READ_ATTRIBUTES | FILE_READ_DATA | DELETE | SYNCHRONIZE,
+        FILE_ATTRIBUTE_NORMAL,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        FILE_OPEN,
+        FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT | FILE_SEQUENTIAL_ONLY
+        );
+
+    if (!NT_SUCCESS(status))
+        return status;
+
+    renameInfoLength = sizeof(FILE_RENAME_INFORMATION) + (ULONG)NewFileName->Length + sizeof(UNICODE_NULL);
+    renameInfo = PhAllocateZero(renameInfoLength);
+    renameInfo->ReplaceIfExists = FailIfExists ? FALSE : TRUE;
+    renameInfo->RootDirectory = NULL;
+    renameInfo->FileNameLength = (ULONG)NewFileName->Length;
+    memcpy(renameInfo->FileName, NewFileName->Buffer, NewFileName->Length);
+
+    status = NtSetInformationFile(
+        fileHandle,
+        &isb,
+        renameInfo,
+        renameInfoLength,
+        FileRenameInformation
+        );
+
+    if (status == STATUS_NOT_SAME_DEVICE)
+    {
+        HANDLE newFileHandle;
+        LARGE_INTEGER newFileSize;
+        PBYTE buffer;
+
+        status = PhGetFileSize(fileHandle, &newFileSize);
+
+        if (!NT_SUCCESS(status))
+            goto CleanupExit;
+
+        status = PhCreateFileEx(
+            &newFileHandle,
+            NewFileName,
+            FILE_GENERIC_WRITE,
+            NULL,
             &newFileSize,
             FILE_ATTRIBUTE_NORMAL,
             FILE_SHARE_READ,
@@ -17969,7 +18196,7 @@ NTSTATUS PhEnumVirtualMemory(
         if (!NT_SUCCESS(status))
             break;
 
-        if (basicInfo.State & MEM_FREE)
+        if (FlagOn(basicInfo.State, MEM_FREE))
         {
             basicInfo.AllocationBase = basicInfo.BaseAddress;
             basicInfo.AllocationProtect = basicInfo.Protect;

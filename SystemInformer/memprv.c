@@ -39,21 +39,21 @@ VOID PhGetMemoryProtectionString(
         return;
     }
 
-    if (Protection & PAGE_NOACCESS)
+    if (FlagOn(Protection, PAGE_NOACCESS))
         PhInitializeStringRef(&base, L"NA");
-    else if (Protection & PAGE_READONLY)
+    else if (FlagOn(Protection, PAGE_READONLY))
         PhInitializeStringRef(&base, L"R");
-    else if (Protection & PAGE_READWRITE)
+    else if (FlagOn(Protection, PAGE_READWRITE))
         PhInitializeStringRef(&base, L"RW");
-    else if (Protection & PAGE_WRITECOPY)
+    else if (FlagOn(Protection, PAGE_WRITECOPY))
         PhInitializeStringRef(&base, L"WC");
-    else if (Protection & PAGE_EXECUTE)
+    else if (FlagOn(Protection, PAGE_EXECUTE))
         PhInitializeStringRef(&base, L"X");
-    else if (Protection & PAGE_EXECUTE_READ)
+    else if (FlagOn(Protection, PAGE_EXECUTE_READ))
         PhInitializeStringRef(&base, L"RX");
-    else if (Protection & PAGE_EXECUTE_READWRITE)
+    else if (FlagOn(Protection, PAGE_EXECUTE_READWRITE))
         PhInitializeStringRef(&base, L"RWX");
-    else if (Protection & PAGE_EXECUTE_WRITECOPY)
+    else if (FlagOn(Protection, PAGE_EXECUTE_WRITECOPY))
         PhInitializeStringRef(&base, L"WCX");
     else
         PhInitializeStringRef(&base, L"?");
@@ -63,19 +63,19 @@ VOID PhGetMemoryProtectionString(
     memcpy(string, base.Buffer, base.Length);
     string += base.Length / sizeof(WCHAR);
 
-    if (Protection & PAGE_GUARD)
+    if (FlagOn(Protection, PAGE_GUARD))
     {
         memcpy(string, L"+G", 2 * sizeof(WCHAR));
         string += 2;
     }
 
-    if (Protection & PAGE_NOCACHE)
+    if (FlagOn(Protection, PAGE_NOCACHE))
     {
         memcpy(string, L"+NC", 3 * sizeof(WCHAR));
         string += 3;
     }
 
-    if (Protection & PAGE_WRITECOMBINE)
+    if (FlagOn(Protection, PAGE_WRITECOMBINE))
     {
         memcpy(string, L"+WCM", 4 * sizeof(WCHAR));
         string += 4;

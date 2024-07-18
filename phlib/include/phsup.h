@@ -152,9 +152,7 @@ FORCEINLINE LONG PhModifySort(
     _In_ PH_SORT_ORDER Order
     )
 {
-    if (Order == AscendingSortOrder)
-        return Result;
-    else if (Order == DescendingSortOrder)
+    if (Order == DescendingSortOrder)
         return -Result;
     else
         return Result;
@@ -277,7 +275,31 @@ FORCEINLINE int wcsicmp2(
         return 1;
 }
 
-typedef int (__cdecl *PC_COMPARE_FUNCTION)(void *, const void *, const void *);
+FORCEINLINE int uintptrcmpnull(
+    _In_ ULONG_PTR value1,
+    _In_ ULONG_PTR value2,
+    _In_ PH_SORT_ORDER Order
+    )
+{
+    // Ignore zero when sorting (dmex)
+    if (value1 != 0 && value2 != 0)
+    {
+        if (value1 > value2)
+            return -1;
+        else if (value1 < value2)
+            return 1;
+
+        return 0;
+    }
+    else if (value1 == 0)
+    {
+        return value2 == 0 ? 0 : (Order == AscendingSortOrder ? -1 : 1);
+    }
+    else
+    {
+        return (Order == AscendingSortOrder ? 1 : -1);
+    }
+}
 
 // Synchronization
 

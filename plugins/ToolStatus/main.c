@@ -17,7 +17,6 @@ HWND ProcessTreeNewHandle = NULL;
 HWND ServiceTreeNewHandle = NULL;
 HWND NetworkTreeNewHandle = NULL;
 INT SelectedTabIndex = 0;
-ULONG ProcessesUpdatedCount = 0;
 ULONG MaxInitializationDelay = 3;
 BOOLEAN UpdateAutomatically = TRUE;
 BOOLEAN UpdateGraphs = TRUE;
@@ -86,11 +85,8 @@ VOID NTAPI ProcessesUpdatedCallback(
     _In_opt_ PVOID Context
     )
 {
-    if (ProcessesUpdatedCount != MaxInitializationDelay)
-    {
-        ProcessesUpdatedCount++;
+    if (PtrToUlong(Parameter) < MaxInitializationDelay)
         return;
-    }
 
     PhPluginGetSystemStatistics(&SystemStatistics);
 

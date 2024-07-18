@@ -326,9 +326,10 @@ BOOLEAN NTAPI PhpWalkThreadStackAnalyzeCallback(
         }
         else
         {
-            PhAppendStringBuilder2(
+            PhAppendFormatStringBuilder(
                 &context->StringBuilder,
-                L"Thread is sleeping."
+                L"Thread is sleeping. (Alertable: %s)",
+                alertable ? L"yes" : L"no"
                 );
         }
     }
@@ -523,14 +524,14 @@ BOOLEAN NTAPI PhpWalkThreadStackAnalyzeCallback(
     {
         ULONG numberOfHandles = PtrToUlong(StackFrame->Params[0]);
         PVOID addressOfHandles = StackFrame->Params[1];
-        WAIT_TYPE waitType = (WAIT_TYPE)StackFrame->Params[2];
+        WAIT_TYPE waitType = (WAIT_TYPE)PtrToUlong(StackFrame->Params[2]);
         BOOLEAN alertable = !!StackFrame->Params[3];
 
         if (numberOfHandles > MAXIMUM_WAIT_OBJECTS)
         {
             numberOfHandles = PtrToUlong(context->PrevParams[1]);
             addressOfHandles = context->PrevParams[2];
-            waitType = (WAIT_TYPE)context->PrevParams[3];
+            waitType = (WAIT_TYPE)PtrToUlong(context->PrevParams[3]);
             alertable = FALSE;
         }
 

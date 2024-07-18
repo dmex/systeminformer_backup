@@ -1150,7 +1150,7 @@ namespace CustomBuildTool
 
         public void AppendFormatted<T>(T t)
         {
-            builder.Append(t?.ToString());
+            builder.Append(t);
         }
 
         public void AppendFormatted<T>(T t, string format) where T : IFormattable

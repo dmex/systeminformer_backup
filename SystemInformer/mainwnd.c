@@ -2874,9 +2874,9 @@ PPH_EMENU PhpCreateToolsMenu(
     PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_CREATESERVICE, L"&Create service...", NULL, NULL), ULONG_MAX);
     PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_LIVEDUMP, L"&Create live dump...", NULL, NULL), ULONG_MAX);
     PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_INSPECTEXECUTABLEFILE, L"Inspect e&xecutable file...", NULL, NULL), ULONG_MAX);
-    PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_THREADSTACKS, L"&Search thread stacks", NULL, NULL), ULONG_MAX);
-    PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_HIDDENPROCESSES, L"&Hidden processes", NULL, NULL), ULONG_MAX);
-    PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_PAGEFILES, L"&Pagefiles", NULL, NULL), ULONG_MAX);
+    PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_THREADSTACKS, L"&Search thread stacks...", NULL, NULL), ULONG_MAX);
+    PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_HIDDENPROCESSES, L"&Hidden processes...", NULL, NULL), ULONG_MAX);
+    PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_PAGEFILES, L"&Pagefiles...", NULL, NULL), ULONG_MAX);
     PhInsertEMenuItem(ToolsMenu, PhCreateEMenuSeparator(), ULONG_MAX);
     PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_STARTTASKMANAGER, L"Start &Task Manager", NULL, NULL), ULONG_MAX);
     PhInsertEMenuItem(ToolsMenu, PhCreateEMenuItem(0, ID_TOOLS_STARTRESOURCEMONITOR, L"Start &Resource Monitor", NULL, NULL), ULONG_MAX);
@@ -3662,7 +3662,7 @@ VOID PhMwpSelectionChangedTabControl(
                     page->Callback(page, MainTabPageFontChanged, PhTreeWindowFont, NULL);
             }
 
-            page->Callback(page, MainTabPageSelected, (PVOID)TRUE, NULL);
+            page->Callback(page, MainTabPageSelected, UlongToPtr(TRUE), NULL);
 
             if (page->WindowHandle)
             {
@@ -3672,7 +3672,7 @@ VOID PhMwpSelectionChangedTabControl(
         }
         else if (page->Index == OldIndex)
         {
-            page->Callback(page, MainTabPageSelected, (PVOID)FALSE, NULL);
+            page->Callback(page, MainTabPageSelected, UlongToPtr(FALSE), NULL);
 
             if (page->WindowHandle)
             {
@@ -4623,6 +4623,10 @@ PVOID PhPluginInvokeWindowCallback(
             return (PVOID)UlongToPtr(PhPortableEnabled);
         }
         break;
+    case PH_MAINWINDOW_CALLBACK_TYPE_PHSVC:
+        {
+            return (PVOID)UlongToPtr(PhStartupParameters.PhSvc);
+        }
     }
 
     return NULL;

@@ -516,7 +516,6 @@ BOOLEAN OpenDotNetPublicControlBlock_V4(
     OBJECT_ATTRIBUTES namespaceObjectAttributes;
     OBJECT_ATTRIBUTES sectionObjectAttributes;
     PTOKEN_APPCONTAINER_INFORMATION appContainerInfo = NULL;
-    SID_IDENTIFIER_AUTHORITY SIDWorldAuth = SECURITY_WORLD_SID_AUTHORITY;
 
     legacyBoundaryDescriptorName = PhFormatString(
         CorSxSBoundaryDescriptor,

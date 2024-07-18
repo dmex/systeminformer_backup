@@ -807,12 +807,12 @@ PPH_STRING EtpGpuTemperatureGraphLabelYFunction(
 
     if (EtGpuFahrenheitEnabled)
     {
-        PhInitFormatF(&format[0], (ULONG)(Value * Parameter) * 1.8 + 32, 1);
+        PhInitFormatF(&format[0], (FLOAT)(Value * Parameter) * 1.8f + 32, 1);
         PhInitFormatS(&format[1], L"\u00b0F");
     }
     else
     {
-        PhInitFormatF(&format[0], (ULONG)(Value * Parameter), 1);
+        PhInitFormatF(&format[0], (FLOAT)(Value * Parameter), 1);
         PhInitFormatS(&format[1], L"\u00b0C\n");
     }
 
@@ -1236,7 +1236,7 @@ VOID EtpNotifyTemperatureGpuGraph(
 
                     if (EtGpuFahrenheitEnabled)
                     {
-                        PhInitFormatF(&format[0], (temp * 1.8 + 32), 1);
+                        PhInitFormatF(&format[0], (temp * 1.8f + 32), 1);
                         PhInitFormatS(&format[1], L"\u00b0F\n");
                         PhInitFormatSR(&format[2], PH_AUTO_T(PH_STRING, PhGetStatisticsTimeString(NULL, getTooltipText->Index))->sr);
                     }

@@ -1376,7 +1376,7 @@ static BOOLEAN PhpShowContinueMessageProcesses(
     _In_ PWSTR Verb,
     _In_opt_ PWSTR Message,
     _In_ BOOLEAN WarnOnlyIfDangerous,
-    _In_ PPH_PROCESS_ITEM *Processes,
+    _In_ CONST PPH_PROCESS_ITEM *Processes,
     _In_ ULONG NumberOfProcesses
     )
 {
@@ -1384,7 +1384,7 @@ static BOOLEAN PhpShowContinueMessageProcesses(
     ULONG i;
     BOOLEAN critical = FALSE;
     BOOLEAN dangerous = FALSE;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
 
     if (NumberOfProcesses == 0)
         return FALSE;
@@ -1440,7 +1440,7 @@ static BOOLEAN PhpShowContinueMessageProcesses(
 
         if (!dangerous)
         {
-            cont = PhShowConfirmMessage(
+            result = PhShowConfirmMessage(
                 WindowHandle,
                 Verb,
                 object,
@@ -1450,7 +1450,7 @@ static BOOLEAN PhpShowContinueMessageProcesses(
         }
         else if (!critical)
         {
-            cont = PhShowConfirmMessage(
+            result = PhShowConfirmMessage(
                 WindowHandle,
                 Verb,
                 object,
@@ -1486,7 +1486,7 @@ static BOOLEAN PhpShowContinueMessageProcesses(
                     );
             }
 
-            cont = PhShowConfirmMessage(
+            result = PhShowConfirmMessage(
                 WindowHandle,
                 Verb,
                 object,
@@ -1497,10 +1497,10 @@ static BOOLEAN PhpShowContinueMessageProcesses(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    return cont;
+    return result;
 }
 
 /**
@@ -1529,33 +1529,42 @@ static BOOLEAN PhpShowErrorProcess(
     _In_opt_ ULONG Win32Result
     )
 {
-    if (!PH_IS_FAKE_PROCESS_ID(Process->ProcessId))
+    PPH_STRING string;
+
+    if (PH_IS_FAKE_PROCESS_ID(Process->ProcessId))
     {
-        return PhShowContinueStatus(
-            WindowHandle,
-            PhaFormatString(
-            L"Unable to %s %s (PID %lu)",
-            Verb,
-            Process->ProcessName->Buffer,
-            HandleToUlong(Process->ProcessId)
-            )->Buffer,
-            Status,
-            Win32Result
-            );
+        PH_FORMAT format[4];
+
+        // Unable to %s %s
+        PhInitFormatS(&format[0], L"Unable to ");
+        PhInitFormatS(&format[1], Verb);
+        PhInitFormatC(&format[2], L' ');
+        PhInitFormatSR(&format[3], Process->ProcessName->sr);
+
+        string = PH_AUTO(PhFormat(format, RTL_NUMBER_OF(format), 0));
     }
     else
     {
-        return PhShowContinueStatus(
-            WindowHandle,
-            PhaFormatString(
-            L"Unable to %s %s",
-            Verb,
-            Process->ProcessName->Buffer
-            )->Buffer,
-            Status,
-            Win32Result
-            );
+        PH_FORMAT format[7];
+
+        // Unable to %s %s (PID %lu)
+        PhInitFormatS(&format[0], L"Unable to ");
+        PhInitFormatS(&format[1], Verb);
+        PhInitFormatC(&format[2], L' ');
+        PhInitFormatSR(&format[3], Process->ProcessName->sr);
+        PhInitFormatS(&format[4], L" (PID ");
+        PhInitFormatU(&format[5], HandleToUlong(Process->ProcessId));
+        PhInitFormatC(&format[6], L')');
+
+        string = PH_AUTO(PhFormat(format, RTL_NUMBER_OF(format), 0));
     }
+
+    return PhShowContinueStatus(
+        WindowHandle,
+        PhGetString(string),
+        Status,
+        Win32Result
+        );
 }
 
 BOOLEAN PhUiTerminateProcesses(
@@ -1649,7 +1658,7 @@ BOOLEAN PhpUiTerminateTreeProcess(
     _In_ HWND WindowHandle,
     _In_ PPH_PROCESS_ITEM Process,
     _In_ PVOID Processes,
-    _Inout_ PBOOLEAN Success
+    _Out_ PBOOLEAN Success
     )
 {
     NTSTATUS status;
@@ -1736,26 +1745,26 @@ BOOLEAN PhUiTerminateTreeProcess(
     )
 {
     NTSTATUS status;
-    BOOLEAN success = TRUE;
-    BOOLEAN cont = FALSE;
+    BOOLEAN success;
+    BOOLEAN result;
     PVOID processes;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"terminate",
-            PhaConcatStrings2(Process->ProcessName->Buffer, L" and its descendants")->Buffer,
+            PhConcatStringRefZ(&Process->ProcessName->sr, L" and its descendants")->Buffer,
             L"Terminating a process tree will cause the process and its descendants to be terminated.",
             FALSE
             );
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     if (!NT_SUCCESS(status = PhEnumProcesses(&processes)))
@@ -1847,7 +1856,7 @@ BOOLEAN PhpUiSuspendTreeProcess(
     _In_ HWND WindowHandle,
     _In_ PPH_PROCESS_ITEM Process,
     _In_ PVOID Processes,
-    _Inout_ PBOOLEAN Success
+    _Out_ PBOOLEAN Success
     )
 {
     NTSTATUS status;
@@ -1930,26 +1939,26 @@ BOOLEAN PhUiSuspendTreeProcess(
     )
 {
     NTSTATUS status;
-    BOOLEAN success = TRUE;
-    BOOLEAN cont = FALSE;
+    BOOLEAN success;
+    BOOLEAN result;
     PVOID processes;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"suspend",
-            PhaConcatStrings2(Process->ProcessName->Buffer, L" and its descendants")->Buffer,
+            PhConcatStringRefZ(&Process->ProcessName->sr, L" and its descendants")->Buffer,
             L"Suspending a process tree will cause the process and its descendants to be suspend.",
             FALSE
             );
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     if (!NT_SUCCESS(status = PhEnumProcesses(&processes)))
@@ -2041,7 +2050,7 @@ BOOLEAN PhpUiResumeTreeProcess(
     _In_ HWND WindowHandle,
     _In_ PPH_PROCESS_ITEM Process,
     _In_ PVOID Processes,
-    _Inout_ PBOOLEAN Success
+    _Out_ PBOOLEAN Success
     )
 {
     NTSTATUS status;
@@ -2124,26 +2133,26 @@ BOOLEAN PhUiResumeTreeProcess(
     )
 {
     NTSTATUS status;
-    BOOLEAN success = TRUE;
-    BOOLEAN cont = FALSE;
+    BOOLEAN success;
+    BOOLEAN result;
     PVOID processes;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"resume",
-            PhaConcatStrings2(Process->ProcessName->Buffer, L" and its descendants")->Buffer,
+            PhConcatStringRefZ(&Process->ProcessName->sr, L" and its descendants")->Buffer,
             L"Resuming a process tree will cause the process and its descendants to be resumed.",
             FALSE
             );
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     if (!NT_SUCCESS(status = PhEnumProcesses(&processes)))
@@ -2164,11 +2173,11 @@ BOOLEAN PhUiFreezeTreeProcess(
     )
 {
     NTSTATUS status;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"freeze",
             Process->ProcessName->Buffer,
@@ -2178,10 +2187,10 @@ BOOLEAN PhUiFreezeTreeProcess(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     status = PhFreezeProcess(Process->ProcessId);
@@ -2219,7 +2228,7 @@ BOOLEAN PhUiRestartProcess(
     )
 {
     NTSTATUS status;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
     BOOLEAN tokenIsStronglyNamed = FALSE;
     BOOLEAN tokenIsUIAccessEnabled = FALSE;
     BOOLEAN tokenRevertImpersonation = FALSE;
@@ -2237,7 +2246,7 @@ BOOLEAN PhUiRestartProcess(
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"restart",
             Process->ProcessName->Buffer,
@@ -2248,10 +2257,10 @@ BOOLEAN PhUiRestartProcess(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     // Fail when restarting the current process otherwise
@@ -2545,17 +2554,18 @@ BOOLEAN PhUiDebugProcess(
     static PH_STRINGREF aeDebugWow64KeyName = PH_STRINGREF_INIT(L"Software\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug");
 #endif
     NTSTATUS status;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
     PPH_STRING debuggerCommand = NULL;
     PH_STRING_BUILDER commandLineBuilder;
     HANDLE keyHandle;
     PPH_STRING debugger;
+    PPH_STRING commandLine;
     PH_STRINGREF commandPart;
     PH_STRINGREF dummy;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"debug",
             Process->ProcessName->Buffer,
@@ -2565,10 +2575,10 @@ BOOLEAN PhUiDebugProcess(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     status = PhOpenKey(
@@ -2607,11 +2617,13 @@ BOOLEAN PhUiDebugProcess(
     PhAppendCharStringBuilder(&commandLineBuilder, L'"');
     PhAppendStringBuilder(&commandLineBuilder, &debuggerCommand->sr);
     PhAppendCharStringBuilder(&commandLineBuilder, L'"');
-    PhAppendFormatStringBuilder(&commandLineBuilder, L" -p %lu", HandleToUlong(Process->ProcessId));
+    PhAppendStringBuilder2(&commandLineBuilder, L" -p ");
+    PhAppendUInt32StringBuilder(&commandLineBuilder, HandleToUlong(Process->ProcessId));
+    commandLine = PhFinalStringBuilderString(&commandLineBuilder);
 
     status = PhCreateProcessWin32(
         NULL,
-        commandLineBuilder.String->Buffer,
+        PhGetString(commandLine),
         NULL,
         NULL,
         0,
@@ -2648,7 +2660,7 @@ BOOLEAN PhUiReduceWorkingSetProcesses(
 
         status = PhOpenProcess(
             &processHandle,
-            PROCESS_CREATE_THREAD,
+            PROCESS_SET_QUOTA,
             Processes[i]->ProcessId
             );
 
@@ -2686,13 +2698,13 @@ BOOLEAN PhUiSetVirtualizationProcess(
     )
 {
     NTSTATUS status;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
     HANDLE processHandle;
     HANDLE tokenHandle;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"set",
             L"virtualization for the process",
@@ -2703,10 +2715,10 @@ BOOLEAN PhUiSetVirtualizationProcess(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     if (NT_SUCCESS(status = PhOpenProcess(
@@ -3904,7 +3916,7 @@ static BOOLEAN PhpShowContinueMessageServices(
     )
 {
     PWSTR object;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
 
     if (NumberOfServices == 0)
         return FALSE;
@@ -3920,7 +3932,7 @@ static BOOLEAN PhpShowContinueMessageServices(
             object = L"the selected services";
         }
 
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             Verb,
             object,
@@ -3930,10 +3942,10 @@ static BOOLEAN PhpShowContinueMessageServices(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    return cont;
+    return result;
 }
 
 static NTSTATUS PhpCheckServiceStatus(
@@ -4958,7 +4970,7 @@ static BOOLEAN PhpShowContinueMessageThreads(
     )
 {
     PWSTR object;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
 
     if (NumberOfThreads == 0)
         return FALSE;
@@ -4974,7 +4986,7 @@ static BOOLEAN PhpShowContinueMessageThreads(
             object = L"the selected threads";
         }
 
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             Verb,
             object,
@@ -4984,10 +4996,10 @@ static BOOLEAN PhpShowContinueMessageThreads(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    return cont;
+    return result;
 }
 
 static BOOLEAN PhpShowErrorThread(
@@ -5443,7 +5455,7 @@ BOOLEAN PhUiUnloadModule(
 {
     NTSTATUS status = STATUS_UNSUCCESSFUL;
     HANDLE processHandle = NULL;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
     {
@@ -5474,7 +5486,7 @@ BOOLEAN PhUiUnloadModule(
             return FALSE;
         }
 
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             verb,
             Module->Name->Buffer,
@@ -5484,10 +5496,10 @@ BOOLEAN PhUiUnloadModule(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     switch (Module->Type)
@@ -5651,7 +5663,7 @@ BOOLEAN PhUiFreeMemory(
     )
 {
     NTSTATUS status;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
     HANDLE processHandle;
 
     if (PhGetIntegerSetting(L"EnableWarnings"))
@@ -5678,7 +5690,7 @@ BOOLEAN PhUiFreeMemory(
             message = L"Unmapping a section view may cause the process to crash.\r\n\r\nSome programs may also restrict access or ban your account when unmapping the memory of the process.";
         }
 
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             verb,
             L"the memory region",
@@ -5688,10 +5700,10 @@ BOOLEAN PhUiFreeMemory(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     if (NT_SUCCESS(status = PhOpenProcess(
@@ -5806,7 +5818,7 @@ BOOLEAN PhUiCloseHandles(
     )
 {
     NTSTATUS status;
-    BOOLEAN cont = FALSE;
+    BOOLEAN result;
     BOOLEAN success = TRUE;
     HANDLE processHandle;
 
@@ -5815,7 +5827,7 @@ BOOLEAN PhUiCloseHandles(
 
     if (Warn && PhGetIntegerSetting(L"EnableWarnings"))
     {
-        cont = PhShowConfirmMessage(
+        result = PhShowConfirmMessage(
             WindowHandle,
             L"close",
             NumberOfHandles == 1 ? L"the selected handle" : L"the selected handles",
@@ -5825,10 +5837,10 @@ BOOLEAN PhUiCloseHandles(
     }
     else
     {
-        cont = TRUE;
+        result = TRUE;
     }
 
-    if (!cont)
+    if (!result)
         return FALSE;
 
     if (NT_SUCCESS(status = PhOpenProcess(
@@ -5871,7 +5883,7 @@ BOOLEAN PhUiCloseHandles(
 
         if (critical && strict)
         {
-            cont = PhShowConfirmMessage(
+            result = PhShowConfirmMessage(
                 WindowHandle,
                 L"close",
                 L"critical process handle(s)",
@@ -5880,7 +5892,7 @@ BOOLEAN PhUiCloseHandles(
                 );
         }
 
-        if (!cont)
+        if (!result)
             return FALSE;
 
         for (ULONG i = 0; i < NumberOfHandles; i++)

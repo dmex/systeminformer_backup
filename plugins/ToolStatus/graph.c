@@ -732,7 +732,7 @@ TOOLSTATUS_GRAPH_MESSAGE_CALLBACK_DECLARE(CpuHistoryGraphMessageCallback)
                     cpuUser = PhGetItemCircularBuffer_FLOAT(SystemStatistics.CpuUserHistory, getTooltipText->Index);
 
                     // %.2f%%%s\n%s
-                    PhInitFormatF(&format[0], ((DOUBLE)cpuKernel + cpuUser) * 100, 2);
+                    PhInitFormatF(&format[0], (cpuKernel + cpuUser) * 100.f, 2);
                     PhInitFormatC(&format[1], L'%');
                     PhInitFormatSR(&format[2], PH_AUTO_T(PH_STRING, PhSipGetMaxCpuString(getTooltipText->Index))->sr);
                     PhInitFormatC(&format[3], L'\n');

@@ -69,18 +69,15 @@ VOID EtEtwStatisticsInitialization(
     VOID
     )
 {
-    ULONG sampleCount;
-
-    sampleCount = PhGetIntegerSetting(L"SampleCount");
-    PhInitializeCircularBuffer_ULONG(&EtDiskReadHistory, sampleCount);
-    PhInitializeCircularBuffer_ULONG(&EtDiskWriteHistory, sampleCount);
-    PhInitializeCircularBuffer_ULONG(&EtNetworkReceiveHistory, sampleCount);
-    PhInitializeCircularBuffer_ULONG(&EtNetworkSendHistory, sampleCount);
-    PhInitializeCircularBuffer_ULONG(&EtMaxDiskHistory, sampleCount);
-    PhInitializeCircularBuffer_ULONG(&EtMaxNetworkHistory, sampleCount);
+    PhInitializeCircularBuffer_ULONG(&EtDiskReadHistory, EtSampleCount);
+    PhInitializeCircularBuffer_ULONG(&EtDiskWriteHistory, EtSampleCount);
+    PhInitializeCircularBuffer_ULONG(&EtNetworkReceiveHistory, EtSampleCount);
+    PhInitializeCircularBuffer_ULONG(&EtNetworkSendHistory, EtSampleCount);
+    PhInitializeCircularBuffer_ULONG(&EtMaxDiskHistory, EtSampleCount);
+    PhInitializeCircularBuffer_ULONG(&EtMaxNetworkHistory, EtSampleCount);
 #ifdef PH_RECORD_MAX_USAGE
-    PhInitializeCircularBuffer_ULONG64(&PhMaxDiskUsageHistory, sampleCount);
-    PhInitializeCircularBuffer_ULONG64(&PhMaxNetworkUsageHistory, sampleCount);
+    PhInitializeCircularBuffer_ULONG64(&PhMaxDiskUsageHistory, EtSampleCount);
+    PhInitializeCircularBuffer_ULONG64(&PhMaxNetworkUsageHistory, EtSampleCount);
 #endif
 
     if (EtWindowsVersion >= WINDOWS_10_RS3 && !PhIsExecutingInWow64())

@@ -1153,16 +1153,11 @@ VOID PhNfpProcessesUpdatedHandler(
     _In_opt_ PVOID Context
     )
 {
-    static ULONG processesUpdatedCount = 0;
-
     // Update the icons on a separate thread so we don't block the main window
     // or provider threads when explorer is not responding. (dmex)
 
-    if (processesUpdatedCount != 3)
-    {
-        processesUpdatedCount++;
+    if (PtrToUlong(Parameter) < 3)
         return;
-    }
 
     if (PhpTrayIconEventHandle && PhNfIconsEnabled())
     {
@@ -1395,7 +1390,7 @@ VOID PhNfpCpuHistoryIconUpdateCallback(
         maxCpuProcessItem = NULL;
 
     PhInitFormatS(&format[0], L"CPU history: ");
-    PhInitFormatF(&format[1], ((DOUBLE)PhCpuKernelUsage + PhCpuUserUsage) * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[1], (PhCpuKernelUsage + PhCpuUserUsage) * 100.f, PhMaxPrecisionUnit);
     PhInitFormatC(&format[2], '%');
 
     if (maxCpuProcessItem)
@@ -1403,7 +1398,7 @@ VOID PhNfpCpuHistoryIconUpdateCallback(
         PhInitFormatC(&format[3], '\n');
         PhInitFormatSR(&format[4], maxCpuProcessItem->ProcessName->sr);
         PhInitFormatS(&format[5], L": ");
-        PhInitFormatF(&format[6], (DOUBLE)maxCpuProcessItem->CpuUsage * 100, PhMaxPrecisionUnit);
+        PhInitFormatF(&format[6], maxCpuProcessItem->CpuUsage * 100.f, PhMaxPrecisionUnit);
         PhInitFormatC(&format[7], '%');
     }
 
@@ -1557,7 +1552,7 @@ VOID PhNfpCommitHistoryIconUpdateCallback(
     PVOID bits;
     HDC hdc;
     HBITMAP oldBitmap;
-    DOUBLE commitFraction;
+    FLOAT commitFraction;
     PH_FORMAT format[5];
 
     // Icon
@@ -1590,12 +1585,12 @@ VOID PhNfpCommitHistoryIconUpdateCallback(
 
     // Text
 
-    commitFraction = (DOUBLE)PhPerfInformation.CommittedPages / PhPerfInformation.CommitLimit;
+    commitFraction = (FLOAT)PhPerfInformation.CommittedPages / PhPerfInformation.CommitLimit * 100.f;
 
     PhInitFormatS(&format[0], L"Commit: ");
     PhInitFormatSize(&format[1], UInt32x32To64(PhPerfInformation.CommittedPages, PAGE_SIZE));
     PhInitFormatS(&format[2], L" (");
-    PhInitFormatF(&format[3], commitFraction * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[3], commitFraction, PhMaxPrecisionUnit);
     PhInitFormatS(&format[4], L"%)");
 
     *NewText = PhFormat(format, 5, 96);
@@ -1635,7 +1630,7 @@ VOID PhNfpPhysicalHistoryIconUpdateCallback(
     HDC hdc;
     HBITMAP oldBitmap;
     ULONG physicalUsage;
-    DOUBLE physicalFraction;
+    FLOAT physicalFraction;
     PH_FORMAT format[5];
 
     // Icon
@@ -1669,12 +1664,12 @@ VOID PhNfpPhysicalHistoryIconUpdateCallback(
     // Text
 
     physicalUsage = PhSystemBasicInformation.NumberOfPhysicalPages - PhPerfInformation.AvailablePages;
-    physicalFraction = (DOUBLE)physicalUsage / PhSystemBasicInformation.NumberOfPhysicalPages;
+    physicalFraction = (FLOAT)physicalUsage / PhSystemBasicInformation.NumberOfPhysicalPages * 100.f;
 
     PhInitFormatS(&format[0], L"Physical memory: ");
     PhInitFormatSize(&format[1], UInt32x32To64(physicalUsage, PAGE_SIZE));
     PhInitFormatS(&format[2], L" (");
-    PhInitFormatF(&format[3], physicalFraction * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[3], physicalFraction, PhMaxPrecisionUnit);
     PhInitFormatS(&format[4], L"%)");
 
     *NewText = PhFormat(format, 5, 96);
@@ -1803,7 +1798,7 @@ VOID PhNfpCpuUsageIconUpdateCallback(
             PhInitFormatC(&format[0], L'\n');
             PhInitFormatSR(&format[1], maxCpuProcessItem->ProcessName->sr);
             PhInitFormatS(&format[2], L": ");
-            PhInitFormatF(&format[3], (DOUBLE)maxCpuProcessItem->CpuUsage * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[3], maxCpuProcessItem->CpuUsage * 100.f, PhMaxPrecisionUnit);
             PhInitFormatC(&format[4], L'%');
 
             maxCpuText = PhFormat(format, 5, 128);
@@ -1817,7 +1812,7 @@ VOID PhNfpCpuUsageIconUpdateCallback(
     }
 
     PhInitFormatS(&format[0], L"CPU usage: ");
-    PhInitFormatF(&format[1], (DOUBLE)(PhCpuKernelUsage + PhCpuUserUsage) * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[1], (PhCpuKernelUsage + PhCpuUserUsage) * 100.f, PhMaxPrecisionUnit);
     PhInitFormatC(&format[2], L'%');
     if (maxCpuText) PhInitFormatSR(&format[3], maxCpuText->sr);
     else PhInitFormatC(&format[3], L' ');
@@ -1866,7 +1861,7 @@ VOID PhNfpCpuUsageTextIconUpdateCallback(
 
     Icon->Pointers->BeginBitmap(&drawInfo.Width, &drawInfo.Height, &bitmap, &bits, &hdc, &oldBitmap);
 
-    PhInitFormatF(&format[0], (DOUBLE)(PhCpuKernelUsage + PhCpuUserUsage) * 100, 0);
+    PhInitFormatF(&format[0], (PhCpuKernelUsage + PhCpuUserUsage) * 100.f, 0);
     text = PhFormat(format, 1, 10);
 
     drawInfo.TextFont = PhNfGetTrayIconFont(0);
@@ -1897,7 +1892,7 @@ VOID PhNfpCpuUsageTextIconUpdateCallback(
             PhInitFormatC(&format[0], L'\n');
             PhInitFormatSR(&format[1], maxCpuProcessItem->ProcessName->sr);
             PhInitFormatS(&format[2], L": ");
-            PhInitFormatF(&format[3], (DOUBLE)maxCpuProcessItem->CpuUsage * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[3], maxCpuProcessItem->CpuUsage * 100.f, PhMaxPrecisionUnit);
             PhInitFormatC(&format[4], L'%');
 
             maxCpuText = PhFormat(format, 5, 128);
@@ -1911,7 +1906,7 @@ VOID PhNfpCpuUsageTextIconUpdateCallback(
     }
 
     PhInitFormatS(&format[0], L"CPU usage: ");
-    PhInitFormatF(&format[1], (DOUBLE)(PhCpuKernelUsage + PhCpuUserUsage) * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[1], (PhCpuKernelUsage + PhCpuUserUsage) * 100.f, PhMaxPrecisionUnit);
     PhInitFormatC(&format[2], L'%');
     if (maxCpuText) PhInitFormatSR(&format[3], maxCpuText->sr);
     else PhInitFormatC(&format[3], L' ');
@@ -1952,9 +1947,7 @@ VOID PhNfpIoUsageTextIconUpdateCallback(
     PPH_PROCESS_ITEM maxIoProcessItem;
     PH_FORMAT format[8];
     PPH_STRING text;
-    static ULONG64 maxValue = UInt32x32To64(100000, 1024); // minimum scaling of 100 MB.
-
-    // TODO: Reset maxValue every X amount of time.
+    ULONG64 maxValue = UInt32x32To64(100000, 1024); // minimum scaling of 100 MB.
 
     // Icon
 
@@ -1963,7 +1956,7 @@ VOID PhNfpIoUsageTextIconUpdateCallback(
     if (maxValue < (PhIoReadDelta.Delta + PhIoWriteDelta.Delta + PhIoOtherDelta.Delta))
         maxValue = (PhIoReadDelta.Delta + PhIoWriteDelta.Delta + PhIoOtherDelta.Delta);
 
-    PhInitFormatF(&format[0], (DOUBLE)(PhIoReadDelta.Delta + PhIoWriteDelta.Delta + PhIoOtherDelta.Delta) / maxValue * 100, 0);
+    PhInitFormatF(&format[0], (FLOAT)(PhIoReadDelta.Delta + PhIoWriteDelta.Delta + PhIoOtherDelta.Delta) / (FLOAT)maxValue * 100.f, 0);
     text = PhFormat(format, 1, 10);
 
     drawInfo.TextFont = PhNfGetTrayIconFont(0);
@@ -2036,15 +2029,17 @@ VOID PhNfpCommitTextIconUpdateCallback(
     PVOID bits;
     HDC hdc;
     HBITMAP oldBitmap;
-    DOUBLE commitFraction;
+    FLOAT commitFraction;
     PH_FORMAT format[5];
     PPH_STRING text;
+
+    commitFraction = PhPerfInformation.CommittedPages / PhPerfInformation.CommitLimit * 100.f;
 
     // Icon
 
     Icon->Pointers->BeginBitmap(&drawInfo.Width, &drawInfo.Height, &bitmap, &bits, &hdc, &oldBitmap);
 
-    PhInitFormatF(&format[0], (DOUBLE)PhPerfInformation.CommittedPages / PhPerfInformation.CommitLimit * 100, 0);
+    PhInitFormatF(&format[0], commitFraction, 0);
     text = PhFormat(format, 1, 10);
 
     drawInfo.TextFont = PhNfGetTrayIconFont(0);
@@ -2063,12 +2058,10 @@ VOID PhNfpCommitTextIconUpdateCallback(
 
     // Text
 
-    commitFraction = (DOUBLE)PhPerfInformation.CommittedPages / PhPerfInformation.CommitLimit;
-
     PhInitFormatS(&format[0], L"Commit: ");
     PhInitFormatSize(&format[1], UInt32x32To64(PhPerfInformation.CommittedPages, PAGE_SIZE));
     PhInitFormatS(&format[2], L" (");
-    PhInitFormatF(&format[3], commitFraction * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[3], commitFraction, PhMaxPrecisionUnit);
     PhInitFormatS(&format[4], L"%)");
 
     *NewText = PhFormat(format, 5, 96);
@@ -2102,18 +2095,18 @@ VOID PhNfpPhysicalUsageTextIconUpdateCallback(
     HDC hdc;
     HBITMAP oldBitmap;
     ULONG physicalUsage;
-    DOUBLE physicalFraction;
+    FLOAT physicalFraction;
     PH_FORMAT format[5];
     PPH_STRING text;
+
+    physicalUsage = PhSystemBasicInformation.NumberOfPhysicalPages - PhPerfInformation.AvailablePages;
+    physicalFraction = (FLOAT)physicalUsage / (FLOAT)PhSystemBasicInformation.NumberOfPhysicalPages * 100.f;
 
     // Icon
 
     Icon->Pointers->BeginBitmap(&drawInfo.Width, &drawInfo.Height, &bitmap, &bits, &hdc, &oldBitmap);
 
-    physicalUsage = PhSystemBasicInformation.NumberOfPhysicalPages - PhPerfInformation.AvailablePages;
-    physicalFraction = (DOUBLE)physicalUsage / PhSystemBasicInformation.NumberOfPhysicalPages;
-
-    PhInitFormatF(&format[0], physicalFraction * 100, 0);
+    PhInitFormatF(&format[0], physicalFraction, 0);
     text = PhFormat(format, 1, 10);
 
     drawInfo.TextFont = PhNfGetTrayIconFont(0);
@@ -2132,13 +2125,10 @@ VOID PhNfpPhysicalUsageTextIconUpdateCallback(
 
     // Text
 
-    physicalUsage = PhSystemBasicInformation.NumberOfPhysicalPages - PhPerfInformation.AvailablePages;
-    physicalFraction = (DOUBLE)physicalUsage / PhSystemBasicInformation.NumberOfPhysicalPages;
-
     PhInitFormatS(&format[0], L"Physical memory: ");
     PhInitFormatSize(&format[1], UInt32x32To64(physicalUsage, PAGE_SIZE));
     PhInitFormatS(&format[2], L" (");
-    PhInitFormatF(&format[3], physicalFraction * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[3], physicalFraction, PhMaxPrecisionUnit);
     PhInitFormatS(&format[4], L"%)");
 
     *NewText = PhFormat(format, 5, 96);

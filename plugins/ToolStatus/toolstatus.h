@@ -379,7 +379,6 @@ VOID ToolbarGraphCreatePluginMenu(
 
 // statusbar.c
 
-extern ULONG ProcessesUpdatedCount;
 extern HWND StatusBarHandle;
 extern PPH_LIST StatusBarItemList;
 extern ULONG StatusBarItems[MAX_STATUSBAR_ITEMS];

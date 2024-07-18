@@ -154,6 +154,7 @@
 #define PHPN_GRANTEDACCESS 0x100000
 #define PHPN_TLSBITMAPDELTA 0x200000
 #define PHPN_REFERENCEDELTA 0x400000
+#define PHPN_LXSSPID 0x800000
 
 // begin_phapppub
 typedef struct _PH_PROCESS_NODE
@@ -295,6 +296,7 @@ typedef struct _PH_PROCESS_NODE
     PPH_STRING GrantedAccessText;
     PPH_STRING TlsBitmapDeltaText;
     PPH_STRING ReferenceCountText;
+    PPH_STRING LxssProcessIdText;
 
     // Graph buffers
     PH_GRAPH_BUFFERS CpuGraphBuffers;

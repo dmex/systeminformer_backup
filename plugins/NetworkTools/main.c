@@ -830,21 +830,17 @@ BOOLEAN NetworkToolsGeoIpFlushCache(
 }
 
 VOID ProcessesUpdatedCallback(
-    _In_opt_ PVOID Parameter,
-    _In_opt_ PVOID Context
+    _In_ PVOID Parameter,
+    _In_ PVOID Context
     )
 {
-    static ULONG ProcessesUpdatedCount = 0;
     PLIST_ENTRY listEntry;
 
     if (!NetworkExtensionEnabled)
         return;
 
-    if (ProcessesUpdatedCount != 3)
-    {
-        ProcessesUpdatedCount++;
+    if (PtrToUlong(Parameter) < 3)
         return;
-    }
 
     NetworkToolsGeoIpFlushCache();
 

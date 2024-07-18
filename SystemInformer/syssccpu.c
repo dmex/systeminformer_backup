@@ -194,11 +194,10 @@ BOOLEAN PhSipCpuSectionCallback(
             cpuUser = PhGetItemCircularBuffer_FLOAT(&PhCpuUserHistory, getTooltipText->Index);
 
             // %.2f%% (K: %.2f%%, U: %.2f%%)\n%s\n%s
-            PhInitFormatF(&format[0], ((DOUBLE)cpuKernel + cpuUser) * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[0], (cpuKernel + cpuUser) * 100.f, PhMaxPrecisionUnit);
             PhInitFormatS(&format[1], L"% (K: ");
-            PhInitFormatF(&format[2], (DOUBLE)cpuKernel * 100, PhMaxPrecisionUnit);
             PhInitFormatS(&format[3], L"%, U: ");
-            PhInitFormatF(&format[4], (DOUBLE)cpuUser * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[4], cpuUser * 100.f, PhMaxPrecisionUnit);
             PhInitFormatS(&format[5], L"%)");
             PhInitFormatSR(&format[6], PH_AUTO_T(PH_STRING, PhSipGetMaxCpuString(getTooltipText->Index))->sr);
             PhInitFormatC(&format[7], L'\n');
@@ -214,7 +213,7 @@ BOOLEAN PhSipCpuSectionCallback(
             PH_FORMAT format[2];
 
             // %.2f%%
-            PhInitFormatF(&format[0], ((DOUBLE)PhCpuKernelUsage + PhCpuUserUsage) * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[0], (PhCpuKernelUsage + PhCpuUserUsage) * 100.f, PhMaxPrecisionUnit);
             PhInitFormatC(&format[1], L'%');
 
             drawPanel->Title = PhCreateString(L"CPU");
@@ -950,11 +949,11 @@ VOID PhSipNotifyCpuGraph(
                     cpuUser = PhGetItemCircularBuffer_FLOAT(&PhCpusUserHistory[Index], 0);
 
                     // %.2f%% (K: %.2f%%, U: %.2f%%)
-                    PhInitFormatF(&format[0], ((DOUBLE)cpuKernel + cpuUser) * 100, PhMaxPrecisionUnit);
+                    PhInitFormatF(&format[0], (cpuKernel + cpuUser) * 100.f, PhMaxPrecisionUnit);
                     PhInitFormatS(&format[1], L"% (K: ");
-                    PhInitFormatF(&format[2], (DOUBLE)cpuKernel * 100, PhMaxPrecisionUnit);
+                    PhInitFormatF(&format[2], cpuKernel * 100.f, PhMaxPrecisionUnit);
                     PhInitFormatS(&format[3], L"%, U: ");
-                    PhInitFormatF(&format[4], (DOUBLE)cpuUser * 100, PhMaxPrecisionUnit);
+                    PhInitFormatF(&format[4], cpuUser * 100.f, PhMaxPrecisionUnit);
                     PhInitFormatS(&format[5], L"%)");
 
                     PhMoveReference(&CpusGraphState[Index].Text, PhFormat(format, RTL_NUMBER_OF(format), 64));
@@ -994,11 +993,11 @@ VOID PhSipNotifyCpuGraph(
                         cpuUser = PhGetItemCircularBuffer_FLOAT(&PhCpuUserHistory, getTooltipText->Index);
 
                         // %.2f%% (K: %.2f%%, U: %.2f%%)\n%s\n%s
-                        PhInitFormatF(&format[0], ((DOUBLE)cpuKernel + cpuUser) * 100, PhMaxPrecisionUnit);
+                        PhInitFormatF(&format[0], (cpuKernel + cpuUser) * 100.f, PhMaxPrecisionUnit);
                         PhInitFormatS(&format[1], L"% (K: ");
-                        PhInitFormatF(&format[2], (DOUBLE)cpuKernel * 100, PhMaxPrecisionUnit);
+                        PhInitFormatF(&format[2], cpuKernel * 100.f, PhMaxPrecisionUnit);
                         PhInitFormatS(&format[3], L"%, U: ");
-                        PhInitFormatF(&format[4], (DOUBLE)cpuUser * 100, PhMaxPrecisionUnit);
+                        PhInitFormatF(&format[4], cpuUser * 100.f, PhMaxPrecisionUnit);
                         PhInitFormatS(&format[5], L"%)");
                         PhInitFormatSR(&format[6], PH_AUTO_T(PH_STRING, PhSipGetMaxCpuString(getTooltipText->Index))->sr);
                         PhInitFormatC(&format[7], L'\n');
@@ -1023,11 +1022,11 @@ VOID PhSipNotifyCpuGraph(
                         cpuUser = PhGetItemCircularBuffer_FLOAT(&PhCpusUserHistory[Index], getTooltipText->Index);
 
                         // %.2f%% (K: %.2f%%, U: %.2f%%)%s\n%s
-                        PhInitFormatF(&format[count++], ((DOUBLE)cpuKernel + cpuUser) * 100, PhMaxPrecisionUnit);
+                        PhInitFormatF(&format[count++], (cpuKernel + cpuUser) * 100.f, PhMaxPrecisionUnit);
                         PhInitFormatS(&format[count++], L"% (K: ");
-                        PhInitFormatF(&format[count++], (DOUBLE)cpuKernel * 100, PhMaxPrecisionUnit);
+                        PhInitFormatF(&format[count++], cpuKernel * 100.f, PhMaxPrecisionUnit);
                         PhInitFormatS(&format[count++], L"%, U: ");
-                        PhInitFormatF(&format[count++], (DOUBLE)cpuUser * 100, PhMaxPrecisionUnit);
+                        PhInitFormatF(&format[count++], cpuUser * 100.f, PhMaxPrecisionUnit);
                         PhInitFormatS(&format[count++], L"%)");
                         PhInitFormatSR(&format[count++], PH_AUTO_T(PH_STRING, PhSipGetMaxCpuString(getTooltipText->Index))->sr);
                         PhInitFormatS(&format[count++], L"\nCPU ");
@@ -1147,8 +1146,8 @@ VOID PhSipUpdateCpuPanel(
     )
 {
     DOUBLE cpuFrequency;
-    DOUBLE cpuGhz = 0;
-    BOOLEAN distributionSucceeded = FALSE;
+    FLOAT cpuGhz;
+    FLOAT cpuMaxMhz;
     LARGE_INTEGER systemUptime;
     LARGE_INTEGER performanceCounterStart;
     LARGE_INTEGER performanceCounterEnd;
@@ -1164,20 +1163,26 @@ VOID PhSipUpdateCpuPanel(
     WCHAR formatBuffer[256];
     WCHAR uptimeString[PH_TIMESPAN_STR_LEN_1] = { L"Unknown" };
 
-    if (CurrentPerformanceDistribution && PreviousPerformanceDistribution)
+    if (
+        CurrentPerformanceDistribution &&
+        PreviousPerformanceDistribution &&
+        PhSipGetCpuFrequencyFromDistribution(&cpuFrequency)
+        )
     {
-        if (PhSipGetCpuFrequencyFromDistribution(&cpuFrequency))
-        {
-            cpuGhz = cpuFrequency / 1000;
-            distributionSucceeded = TRUE;
-        }
+        cpuGhz = (FLOAT)cpuFrequency / 1000;
+        cpuMaxMhz = (FLOAT)CpuMaxMhz / 1000;
+    }
+    else
+    {
+        cpuGhz = (FLOAT)PowerInformation[0].CurrentMhz / 1000;
+        cpuMaxMhz = (FLOAT)CpuMaxMhz / 1000;
     }
 
     if (!distributionSucceeded)
         cpuGhz = (DOUBLE)PowerInformation[0].CurrentMhz / 1000;
 
     // %.2f%%
-    PhInitFormatF(&format[0], ((DOUBLE)PhCpuUserUsage + PhCpuKernelUsage) * 100, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[0], (PhCpuUserUsage + PhCpuKernelUsage) * 100.f, PhMaxPrecisionUnit);
     PhInitFormatC(&format[1], L'%');
 
     if (PhFormatToBuffer(format, 2, formatBuffer, sizeof(formatBuffer), NULL))
@@ -1189,7 +1194,7 @@ VOID PhSipUpdateCpuPanel(
 
     PhInitFormatF(&format[0], cpuGhz, PhMaxPrecisionUnit);
     PhInitFormatS(&format[1], L" / ");
-    PhInitFormatF(&format[2], (DOUBLE)CpuMaxMhz / 1000, PhMaxPrecisionUnit);
+    PhInitFormatF(&format[2], cpuMaxMhz, PhMaxPrecisionUnit);
     PhInitFormatS(&format[3], L" GHz");
 
     // %.2f / %.2f GHz
@@ -1409,7 +1414,7 @@ PPH_STRING PhSipGetMaxCpuString(
             PhInitFormatS(&format[2], L" (");
             PhInitFormatU(&format[3], HandleToUlong(maxProcessRecord->ProcessId));
             PhInitFormatS(&format[4], L"): ");
-            PhInitFormatF(&format[5], (DOUBLE)maxCpuUsage * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[5], maxCpuUsage * 100.f, PhMaxPrecisionUnit);
             PhInitFormatC(&format[6], L'%');
 
             maxUsageString = PhFormat(format, RTL_NUMBER_OF(format), 128);
@@ -1422,7 +1427,7 @@ PPH_STRING PhSipGetMaxCpuString(
             PhInitFormatC(&format[0], L'\n');
             PhInitFormatSR(&format[1], maxProcessRecord->ProcessName->sr);
             PhInitFormatS(&format[2], L": ");
-            PhInitFormatF(&format[3], (DOUBLE)maxCpuUsage * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[3], maxCpuUsage * 100.f, PhMaxPrecisionUnit);
             PhInitFormatC(&format[4], L'%');
 
             maxUsageString = PhFormat(format, RTL_NUMBER_OF(format), 128);

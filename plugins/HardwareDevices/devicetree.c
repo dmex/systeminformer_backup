@@ -51,9 +51,9 @@ static PPH_OBJECT_TYPE DeviceTreeType = NULL;
 static BOOLEAN DeviceTabCreated = FALSE;
 static HWND DeviceTreeHandle = NULL;
 static ULONG DeviceTreeVisibleColumns[PhMaxDeviceProperty] = { 0 };
-static PH_CALLBACK_REGISTRATION DeviceNotifyRegistration = { 0 };
-static PH_CALLBACK_REGISTRATION ProcessesUpdatedCallbackRegistration = { 0 };
-static PH_CALLBACK_REGISTRATION SettingsUpdatedCallbackRegistration = { 0 };
+static PH_CALLBACK_REGISTRATION DeviceNotifyRegistration = { NULL };
+static PH_CALLBACK_REGISTRATION ProcessesUpdatedCallbackRegistration = { NULL };
+static PH_CALLBACK_REGISTRATION SettingsUpdatedCallbackRegistration = { NULL };
 static PDEVICE_TREE DeviceTree = NULL;
 static HIMAGELIST DeviceImageList = NULL;
 static PH_INTEGER_PAIR DeviceIconSize = { 16, 16 };
@@ -63,9 +63,8 @@ static PTOOLSTATUS_INTERFACE ToolStatusInterface = NULL;
 static BOOLEAN DeviceTabSelected = FALSE;
 static ULONG DeviceTreeSortColumn = 0;
 static PH_SORT_ORDER DeviceTreeSortOrder = NoSortOrder;
-static PH_TN_FILTER_SUPPORT DeviceTreeFilterSupport = { 0 };
-static PPH_TN_FILTER_ENTRY DeviceTreeFilterEntry = NULL;
-static PH_CALLBACK_REGISTRATION SearchChangedRegistration = { 0 };
+static PH_TN_FILTER_SUPPORT DeviceTreeFilterSupport = { NULL };
+static PH_CALLBACK_REGISTRATION SearchChangedRegistration = { NULL };
 static PPH_POINTER_LIST DeviceNodeStateList = NULL;
 
 static int __cdecl DeviceListSortByNameFunction(
@@ -1282,8 +1281,6 @@ VOID DevicesTreeInitialize(
     _In_ HWND TreeNewHandle
     )
 {
-    ULONG count = 0;
-
     DeviceTreeHandle = TreeNewHandle;
 
     PhSetControlTheme(DeviceTreeHandle, L"explorer");

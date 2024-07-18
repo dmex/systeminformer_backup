@@ -625,8 +625,6 @@ VOID LoadRaplDeviceImages(
     PH_STRINGREF indexPartSr;
     ULONG64 index;
     DEVPROPTYPE devicePropertyType;
-    ULONG deviceInstanceIdLength = MAX_DEVICE_ID_LEN;
-    WCHAR deviceInstanceId[MAX_DEVICE_ID_LEN + 1] = L"";
     LONG dpiValue;
 
     bufferSize = 0x40;

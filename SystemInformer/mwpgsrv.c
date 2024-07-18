@@ -237,7 +237,7 @@ BOOLEAN PhMwpMicrosoftServiceTreeFilter(
         {
             PH_IMAGE_VERSION_INFO versionInfo;
 
-            if (PhInitializeImageVersionInfo(&versionInfo, PhGetString(serviceNode->ServiceItem->FileName)))
+            if (PhInitializeImageVersionInfo(&versionInfo, &serviceNode->ServiceItem->FileName->sr))
             {
                 static PH_STRINGREF microsoftCompanyNameSr = PH_STRINGREF_INIT(L"Microsoft");
 

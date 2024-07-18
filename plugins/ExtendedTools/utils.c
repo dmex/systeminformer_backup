@@ -135,8 +135,8 @@ VOID EtFormatNetworkSize(
     }
 }
 
-VOID EtFormatDouble(
-    _In_ DOUBLE Value,
+VOID EtFormatSingle(
+    _In_ FLOAT Value,
     _In_ PET_PROCESS_BLOCK Block,
     _In_ PPH_PLUGIN_TREENEW_MESSAGE Message
     )

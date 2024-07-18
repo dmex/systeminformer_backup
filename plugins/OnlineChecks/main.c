@@ -28,18 +28,13 @@ PH_CALLBACK_REGISTRATION ModulesTreeNewInitializingCallbackRegistration;
 PH_CALLBACK_REGISTRATION ServiceTreeNewInitializingCallbackRegistration;
 
 BOOLEAN VirusTotalScanningEnabled = FALSE;
-ULONG ProcessesUpdatedCount = 0;
 
 VOID ProcessesUpdatedCallback(
     _In_opt_ PVOID Parameter,
     _In_opt_ PVOID Context
     )
 {
-    if (ProcessesUpdatedCount != 3)
-    {
-        ProcessesUpdatedCount++;
-        return;
-    }
+    NOTHING;
 }
 
 VOID NTAPI LoadCallback(
@@ -55,15 +50,15 @@ VOID NTAPI ShowOptionsCallback(
     _In_ PVOID Context
     )
 {
-    PPH_PLUGIN_OPTIONS_POINTERS optionsEntry = (PPH_PLUGIN_OPTIONS_POINTERS)Parameter;
-
-    optionsEntry->CreateSection(
-        L"OnlineChecks",
-        PluginInstance->DllBase,
-        MAKEINTRESOURCE(IDD_OPTIONS),
-        OptionsDlgProc,
-        NULL
-        );
+    //PPH_PLUGIN_OPTIONS_POINTERS optionsEntry = (PPH_PLUGIN_OPTIONS_POINTERS)Parameter;
+    //
+    //optionsEntry->CreateSection(
+    //    L"OnlineChecks",
+    //    PluginInstance->DllBase,
+    //    MAKEINTRESOURCE(IDD_OPTIONS),
+    //    OptionsDlgProc,
+    //    NULL
+    //    );
 }
 
 VOID NTAPI MenuItemCallback(

@@ -464,7 +464,7 @@ VOID EtProcessTreeNewMessage(
                         );
 
                     gpuUsage *= 100;
-                    EtFormatDouble(gpuUsage, block, message);
+                    EtFormatSingle(gpuUsage, block, message);
                 }
                 break;
             case ETPRTNC_GPUDEDICATEDBYTES:
@@ -565,7 +565,7 @@ VOID EtProcessTreeNewMessage(
                         &frames
                         );
 
-                    EtFormatDouble(frames, block, message);
+                    EtFormatSingle(frames, block, message);
                 }
                 break;
             case ETPRTNC_NPU:
@@ -581,7 +581,7 @@ VOID EtProcessTreeNewMessage(
                         );
 
                     npuUsage *= 100;
-                    EtFormatDouble(npuUsage, block, message);
+                    EtFormatSingle(npuUsage, block, message);
                 }
                 break;
             case ETPRTNC_NPUDEDICATEDBYTES:

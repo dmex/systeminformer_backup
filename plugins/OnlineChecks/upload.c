@@ -936,7 +936,6 @@ NTSTATUS UploadCheckThreadStart(
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
-    BOOLEAN fileExists = FALSE;
     LARGE_INTEGER fileSize64;
     PPH_BYTES subRequestBuffer = NULL;
     PSERVICE_INFO serviceInfo = NULL;
@@ -1007,8 +1006,6 @@ NTSTATUS UploadCheckThreadStart(
     case MENUITEM_HYBRIDANALYSIS_UPLOAD_SERVICE:
         {
             PPH_STRING tempHashString = NULL;
-            PSTR uploadUrl = NULL;
-            PSTR quote = NULL;
             PVOID rootJsonObject;
 
             // Create the default upload URL.
@@ -1067,8 +1064,6 @@ NTSTATUS UploadCheckThreadStart(
     case MENUITEM_VIRUSTOTAL_UPLOAD_SERVICE:
         {
             PPH_STRING tempHashString = NULL;
-            PSTR uploadUrl = NULL;
-            PSTR quote = NULL;
             PVOID rootJsonObject;
 
             if (!NT_SUCCESS(status = HashFileAndResetPosition(fileHandle, &fileSize64, Sha256HashAlgorithm, &tempHashString)))

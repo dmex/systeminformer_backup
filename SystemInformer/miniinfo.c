@@ -1973,7 +1973,7 @@ BOOLEAN PhMipCpuListSectionCallback(
 
             // CPU    %.2f%%
             PhInitFormatS(&format[0], L"CPU    ");
-            PhInitFormatF(&format[1], ((DOUBLE)PhCpuUserUsage + PhCpuKernelUsage) * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[1], (PhCpuUserUsage + PhCpuKernelUsage) * 100.f, PhMaxPrecisionUnit);
             PhInitFormatC(&format[2], L'%');
 
             ListSection->Section->Parameters->SetSectionText(ListSection->Section,
@@ -2096,13 +2096,13 @@ BOOLEAN PhMipCommitListSectionCallback(
     {
     case MiListSectionTick:
         {
-            DOUBLE commitFraction = (DOUBLE)PhPerfInformation.CommittedPages / PhPerfInformation.CommitLimit;
+            FLOAT commitFraction = (FLOAT)PhPerfInformation.CommittedPages / (FLOAT)PhPerfInformation.CommitLimit * 100.f;
             PH_FORMAT format[5];
 
             PhInitFormatS(&format[0], L"Commit    ");
             PhInitFormatSize(&format[1], UInt32x32To64(PhPerfInformation.CommittedPages, PAGE_SIZE));
             PhInitFormatS(&format[2], L" (");
-            PhInitFormatF(&format[3], commitFraction * 100, PhMaxPrecisionUnit);
+            PhInitFormatF(&format[3], commitFraction, PhMaxPrecisionUnit);
             PhInitFormatS(&format[4], L"%)");
 
             ListSection->Section->Parameters->SetSectionText(ListSection->Section,

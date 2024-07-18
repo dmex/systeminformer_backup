@@ -655,9 +655,9 @@ typedef enum _VIRTUAL_MEMORY_INFORMATION_CLASS
     VmCfgCallTargetInformation, // CFG_CALL_TARGET_LIST_INFORMATION // REDSTONE2
     VmPageDirtyStateInformation, // REDSTONE3
     VmImageHotPatchInformation, // 19H1
-    VmPhysicalContiguityInformation, // 20H1
+    VmPhysicalContiguityInformation, // MEMORY_PHYSICAL_CONTIGUITY_INFORMATION (requires SeLockMemoryPrivilege) // 20H1
     VmVirtualMachinePrepopulateInformation,
-    VmRemoveFromWorkingSetInformation,
+    VmRemoveFromWorkingSetInformation, // MEMORY_REMOVE_WORKINGSET_INFORMATION
     MaxVmInfoClass
 } VIRTUAL_MEMORY_INFORMATION_CLASS;
 #else
@@ -695,6 +695,12 @@ typedef struct _CFG_CALL_TARGET_LIST_INFORMATION
     PVOID Section; // since REDSTONE5
     ULONGLONG FileOffset;
 } CFG_CALL_TARGET_LIST_INFORMATION, *PCFG_CALL_TARGET_LIST_INFORMATION;
+
+typedef struct _MEMORY_REMOVE_WORKINGSET_INFORMATION
+{
+    ULONG Flags;
+} MEMORY_REMOVE_WORKINGSET_INFORMATION, *PMEMORY_REMOVE_WORKINGSET_INFORMATION;
+
 #endif
 // end_private
 

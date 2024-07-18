@@ -19,7 +19,7 @@ PVOID PhpImportProcedure(
     _Inout_ PPH_INITONCE InitOnce,
     _Inout_ PVOID *Cache,
     _Inout_ PULONG_PTR Cookie,
-    _In_ PWSTR ModuleName,
+    _In_ PPH_STRINGREF ModuleName,
     _In_ PSTR ProcedureName
     )
 {
@@ -28,10 +28,10 @@ PVOID PhpImportProcedure(
         PVOID module;
         PVOID procedure;
 
-        module = PhGetLoaderEntryDllBaseZ(ModuleName);
+        module = PhGetLoaderEntryDllBase(NULL, ModuleName);
 
         if (!module)
-            module = PhLoadLibrary(ModuleName);
+            module = PhLoadLibrary(PhGetStringRefZ(ModuleName));
 
         if (module)
         {
@@ -55,16 +55,18 @@ PVOID PhpImportProcedure(
 _##Name Name##_Import(VOID) \
 { \
     static PH_INITONCE initOnce = PH_INITONCE_INIT; \
+    static PH_STRINGREF moduleName = PH_STRINGREF_INIT((Module)); \
     static PVOID cache = NULL; \
     static ULONG_PTR cookie = 0; \
 \
-    return (_##Name)PhpImportProcedure(&initOnce, &cache, &cookie, Module, #Name); \
+    return (_##Name)PhpImportProcedure(&initOnce, &cache, &cookie, &moduleName, #Name); \
 }
 
 PH_DEFINE_IMPORT(L"ntdll.dll", NtQueryInformationEnlistment);
 PH_DEFINE_IMPORT(L"ntdll.dll", NtQueryInformationResourceManager);
 PH_DEFINE_IMPORT(L"ntdll.dll", NtQueryInformationTransaction);
 PH_DEFINE_IMPORT(L"ntdll.dll", NtQueryInformationTransactionManager);
+PH_DEFINE_IMPORT(L"ntdll.dll", NtQueryInformationByName);
 PH_DEFINE_IMPORT(L"ntdll.dll", NtSetInformationVirtualMemory);
 PH_DEFINE_IMPORT(L"ntdll.dll", NtCreateProcessStateChange);
 PH_DEFINE_IMPORT(L"ntdll.dll", NtChangeProcessState);

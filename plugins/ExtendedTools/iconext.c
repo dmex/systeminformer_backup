@@ -134,7 +134,7 @@ VOID EtpNetworkTextIconUpdateCallback(
     );
 
 VOID EtpGpuMemoryIconUpdateCallback(
-    _In_ struct _PH_NF_ICON* Icon,
+    _In_ PPH_NF_ICON Icon,
     _Out_ PVOID* NewIconOrBitmap,
     _Out_ PULONG Flags,
     _Out_ PPH_STRING* NewText,
@@ -142,7 +142,7 @@ VOID EtpGpuMemoryIconUpdateCallback(
     );
 
 VOID EtpGpuMemoryTextIconUpdateCallback(
-    _In_ struct _PH_NF_ICON* Icon,
+    _In_ PPH_NF_ICON Icon,
     _Out_ PVOID* NewIconOrBitmap,
     _Out_ PULONG Flags,
     _Out_ PPH_STRING* NewText,
@@ -150,7 +150,7 @@ VOID EtpGpuMemoryTextIconUpdateCallback(
     );
 
 VOID EtpGpuTemperatureIconUpdateCallback(
-    _In_ struct _PH_NF_ICON* Icon,
+    _In_ PPH_NF_ICON Icon,
     _Out_ PVOID* NewIconOrBitmap,
     _Out_ PULONG Flags,
     _Out_ PPH_STRING* NewText,
@@ -158,7 +158,7 @@ VOID EtpGpuTemperatureIconUpdateCallback(
     );
 
 VOID EtpGpuTemperatureTextIconUpdateCallback(
-    _In_ struct _PH_NF_ICON* Icon,
+    _In_ PPH_NF_ICON Icon,
     _Out_ PVOID* NewIconOrBitmap,
     _Out_ PULONG Flags,
     _Out_ PPH_STRING* NewText,
@@ -179,7 +179,7 @@ VOID EtLoadTrayIconGuids(
 {
     if (PhGetIntegerSetting(L"IconTrayPersistGuidEnabled"))
     {
-        PPH_STRING settingsString = NULL;
+        PPH_STRING settingsString;
         PH_STRINGREF remaining;
 
         settingsString = PhGetStringSetting(SETTING_NAME_TRAYICON_GUIDS);
@@ -956,7 +956,7 @@ VOID EtpGpuTextIconUpdateCallback(
 
     Icon->Pointers->BeginBitmap(&drawInfo.Width, &drawInfo.Height, &bitmap, &bits, &hdc, &oldBitmap);
 
-    PhInitFormatF(&format[0], (DOUBLE)EtGpuNodeUsage * 100, 0);
+    PhInitFormatF(&format[0], EtGpuNodeUsage * 100.f, 0);
     text = PhFormat(format, 1, 10);
 
     drawInfo.TextFont = PhNfGetTrayIconFont(0);
@@ -1033,7 +1033,7 @@ VOID EtpDiskTextIconUpdateCallback(
     PPH_PROCESS_ITEM maxDiskProcessItem;
     PH_FORMAT format[6];
     PPH_STRING text;
-    static ULONG64 maxValue = 100000 * 1024; // minimum scaling of 100 MB.
+    static ULONG64 maxValue = UInt32x32To64(100000, 1024); // minimum scaling of 100 MB.
 
     // Icon
 
@@ -1042,7 +1042,7 @@ VOID EtpDiskTextIconUpdateCallback(
     if (maxValue < ((ULONG64)EtDiskReadDelta.Delta + EtDiskWriteDelta.Delta))
         maxValue = ((ULONG64)EtDiskReadDelta.Delta + EtDiskWriteDelta.Delta);
 
-    PhInitFormatF(&format[0], ((DOUBLE)EtDiskReadDelta.Delta + EtDiskWriteDelta.Delta) / maxValue * 100, 0);
+    PhInitFormatF(&format[0], (FLOAT)((ULONG64)EtDiskReadDelta.Delta + (ULONG64)EtDiskWriteDelta.Delta) / (FLOAT)maxValue * 100.f, 0);
     text = PhFormat(format, 1, 10);
 
     drawInfo.TextFont = PhNfGetTrayIconFont(0);
@@ -1126,7 +1126,7 @@ VOID EtpNetworkTextIconUpdateCallback(
     if (maxValue < ((ULONG64)EtNetworkReceiveDelta.Delta + EtNetworkSendDelta.Delta))
         maxValue = ((ULONG64)EtNetworkReceiveDelta.Delta + EtNetworkSendDelta.Delta);
 
-    PhInitFormatF(&format[0], ((DOUBLE)EtNetworkReceiveDelta.Delta + EtNetworkSendDelta.Delta) / maxValue * 100, 0);
+    PhInitFormatF(&format[0], (FLOAT)((ULONG64)EtNetworkReceiveDelta.Delta + (ULONG64)EtNetworkSendDelta.Delta) / (FLOAT)maxValue * 100.f, 0);
     text = PhFormat(format, 1, 10);
 
     drawInfo.TextFont = PhNfGetTrayIconFont(0);
@@ -1314,7 +1314,7 @@ VOID EtpGpuMemoryTextIconUpdateCallback(
 // GPU Temperature
 
 VOID EtpGpuTemperatureIconUpdateCallback(
-    _In_ struct _PH_NF_ICON* Icon,
+    _In_ PPH_NF_ICON Icon,
     _Out_ PVOID* NewIconOrBitmap,
     _Out_ PULONG Flags,
     _Out_ PPH_STRING* NewText,
@@ -1385,7 +1385,7 @@ VOID EtpGpuTemperatureIconUpdateCallback(
     PhInitFormatS(&format[0], L"GPU temperature: ");
     if (EtGpuFahrenheitEnabled)
     {
-        PhInitFormatF(&format[1], (EtGpuTemperature * 1.8 + 32), 1);
+        PhInitFormatF(&format[1], (EtGpuTemperature * 1.8f + 32), 1);
         PhInitFormatS(&format[2], L"\u00b0F");
     }
     else
@@ -1400,7 +1400,7 @@ VOID EtpGpuTemperatureIconUpdateCallback(
 }
 
 VOID EtpGpuTemperatureTextIconUpdateCallback(
-    _In_ struct _PH_NF_ICON* Icon,
+    _In_ PPH_NF_ICON Icon,
     _Out_ PVOID* NewIconOrBitmap,
     _Out_ PULONG Flags,
     _Out_ PPH_STRING* NewText,
@@ -1434,7 +1434,7 @@ VOID EtpGpuTemperatureTextIconUpdateCallback(
     Icon->Pointers->BeginBitmap(&drawInfo.Width, &drawInfo.Height, &bitmap, &bits, &hdc, &oldBitmap);
 
     if (EtGpuFahrenheitEnabled)
-        PhInitFormatF(&format[0], (EtGpuTemperature * 1.8 + 32), 0);
+        PhInitFormatF(&format[0], (EtGpuTemperature * 1.8f + 32), 0);
     else
         PhInitFormatF(&format[0], EtGpuTemperature, 0);
     text = PhFormat(format, 1, 10);
@@ -1458,7 +1458,7 @@ VOID EtpGpuTemperatureTextIconUpdateCallback(
     PhInitFormatS(&format[0], L"GPU temperature: ");
     if (EtGpuFahrenheitEnabled)
     {
-        PhInitFormatF(&format[1], (EtGpuTemperature * 1.8 + 32), 1);
+        PhInitFormatF(&format[1], (EtGpuTemperature * 1.8f + 32), 1);
         PhInitFormatS(&format[2], L"\u00b0F");
     }
     else

@@ -177,7 +177,7 @@ typedef enum _PROCESSINFOCLASS
     ProcessCommitReleaseInformation, // qs: PROCESS_COMMIT_RELEASE_INFORMATION
     ProcessDefaultCpuSetsInformation, // qs: SYSTEM_CPU_SET_INFORMATION[5]
     ProcessAllowedCpuSetsInformation, // qs: SYSTEM_CPU_SET_INFORMATION[5]
-    ProcessSubsystemProcess,
+    ProcessSubsystemProcess, // q: ULONG
     ProcessJobMemoryInformation, // q: PROCESS_JOB_MEMORY_INFO
     ProcessInPrivate, // q: BOOLEAN; s: void // ETW // since THRESHOLD2 // 70
     ProcessRaiseUMExceptionOnInvalidHandleClose, // qs: ULONG; s: 0 disables, otherwise enables
@@ -193,7 +193,7 @@ typedef enum _PROCESSINFOCLASS
     ProcessWakeInformation, // q: PROCESS_WAKE_INFORMATION
     ProcessEnergyTrackingState, // qs: PROCESS_ENERGY_TRACKING_STATE
     ProcessManageWritesToExecutableMemory, // MANAGE_WRITES_TO_EXECUTABLE_MEMORY // since REDSTONE3
-    ProcessCaptureTrustletLiveDump,
+    ProcessCaptureTrustletLiveDump, // q: ULONG
     ProcessTelemetryCoverage, // q: TELEMETRY_COVERAGE_HEADER; s: TELEMETRY_COVERAGE_POINT
     ProcessEnclaveInformation,
     ProcessEnableReadWriteVmLogging, // qs: PROCESS_READWRITEVM_LOGGING_INFORMATION
@@ -216,12 +216,12 @@ typedef enum _PROCESSINFOCLASS
     ProcessApplyStateChange,
     ProcessEnableOptionalXStateFeatures, // s: ULONG64 // optional XState feature bitmask
     ProcessAltPrefetchParam, // qs: OVERRIDE_PREFETCH_PARAMETER // App Launch Prefetch (ALPF) // since 22H1
-    ProcessAssignCpuPartitions,
+    ProcessAssignCpuPartitions, // s: PROCESS_ASSIGN_CPU_PARTITION_INFO
     ProcessPriorityClassEx, // s: PROCESS_PRIORITY_CLASS_EX
     ProcessMembershipInformation, // q: PROCESS_MEMBERSHIP_INFORMATION
     ProcessEffectiveIoPriority, // q: IO_PRIORITY_HINT // 110
     ProcessEffectivePagePriority, // q: ULONG
-    ProcessSchedulerSharedData, // since 24H2
+    ProcessSchedulerSharedData, // SCHEDULER_SHARED_DATA_SLOT_INFORMATION // since 24H2
     ProcessSlistRollbackInformation,
     ProcessNetworkIoCounters, // q: PROCESS_NETWORK_COUNTERS
     ProcessFindFirstThreadByTebValue, // PROCESS_TEB_VALUE_INFORMATION
@@ -433,6 +433,13 @@ typedef struct _PROCESS_WS_WATCH_INFORMATION
     PVOID FaultingPc;
     PVOID FaultingVa;
 } PROCESS_WS_WATCH_INFORMATION, *PPROCESS_WS_WATCH_INFORMATION;
+
+typedef struct _PROCESS_ASSIGN_CPU_PARTITION_INFO
+{
+    ULONG Flags;
+    ULONG CpuPartitionCount;
+    HANDLE CpuPartitionHandles[1];
+} PROCESS_ASSIGN_CPU_PARTITION_INFO, *PPROCESS_ASSIGN_CPU_PARTITION_INFO;
 
 #endif
 

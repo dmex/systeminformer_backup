@@ -1354,7 +1354,6 @@ VOID PhpFillProcessItem(
                 )))
             {
                 ProcessItem->LxssProcessId = lxssProcessId;
-                PhPrintUInt32(ProcessItem->LxssProcessIdString, lxssProcessId);
             }
         }
     }

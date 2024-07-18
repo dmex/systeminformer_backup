@@ -6,7 +6,7 @@
  * Authors:
  *
  *     wj32    2010-2012
- *     dmex    2019-2023
+ *     dmex    2019-2024
  *
  */
 
@@ -366,7 +366,7 @@ NTSTATUS PhOpenServiceKey(
         status = PhOpenKey(KeyHandle, DesiredAccess, servicesKeyHandle, ServiceName, 0);
     }
 
-    if (NT_SUCCESS(status))
+    if (!NT_SUCCESS(status))
     {
         if (serviceName = PhGetServiceKeyName(ServiceName))
         {
@@ -382,7 +382,7 @@ NTSTATUS PhOpenServiceKey(
         }
         else
         {
-            status = STATUS_NO_MEMORY;
+            status = STATUS_UNSUCCESSFUL;
         }
     }
 
@@ -1126,6 +1126,8 @@ NTSTATUS PhGetThreadServiceTag(
 
     if (!NT_SUCCESS(status = PhGetThreadBasicInformation(ThreadHandle, &basicInfo)))
         return status;
+    if (!basicInfo.TebBaseAddress) // TODO: PhGetThreadTeb (dmex)
+        return STATUS_UNSUCCESSFUL;
 
     if (!ProcessHandle)
     {

@@ -691,6 +691,7 @@ VOID PhpRemoveProcessNode(
     PhClearReference(&ProcessNode->GrantedAccessText);
     PhClearReference(&ProcessNode->TlsBitmapDeltaText);
     PhClearReference(&ProcessNode->ReferenceCountText);
+    PhClearReference(&ProcessNode->LxssProcessIdText);
 
     PhDeleteGraphBuffers(&ProcessNode->CpuGraphBuffers);
     PhDeleteGraphBuffers(&ProcessNode->PrivateGraphBuffers);
@@ -1637,6 +1638,8 @@ static VOID PhpUpdateProcessNodeTlsBitmapDelta(
 {
     if (!FlagOn(ProcessNode->ValidMask, PHPN_TLSBITMAPDELTA))
     {
+        ProcessNode->TlsBitmapCount = 0;
+
         if (PH_IS_REAL_PROCESS_ID(ProcessNode->ProcessId) && !ProcessNode->ProcessItem->IsSubsystemProcess)
         {
             HANDLE processHandle;
@@ -1669,6 +1672,8 @@ static VOID PhpUpdateProcessNodeObjectReferences(
 {
     if (!FlagOn(ProcessNode->ValidMask, PHPN_REFERENCEDELTA))
     {
+        ProcessNode->ReferenceCount = 0;
+
         if (PH_IS_REAL_PROCESS_ID(ProcessNode->ProcessId))
         {
             if (ProcessNode->ProcessItem->QueryHandle)
@@ -1683,6 +1688,26 @@ static VOID PhpUpdateProcessNodeObjectReferences(
         }
 
         SetFlag(ProcessNode->ValidMask, PHPN_REFERENCEDELTA);
+    }
+}
+
+static VOID PhpUpdateProcessNodeLxssProcessId(
+    _Inout_ PPH_PROCESS_NODE ProcessNode
+    )
+{
+    if (!FlagOn(ProcessNode->ValidMask, PHPN_LXSSPID))
+    {
+        PhClearReference(&ProcessNode->LxssProcessIdText);
+
+        if (
+            ProcessNode->ProcessItem->IsSubsystemProcess &&
+            ProcessNode->ProcessItem->LxssProcessId
+            )
+        {
+            ProcessNode->LxssProcessIdText = PhFormatUInt64(ProcessNode->ProcessItem->LxssProcessId, FALSE);
+        }
+
+        SetFlag(ProcessNode->ValidMask, PHPN_LXSSPID);
     }
 }
 
@@ -2019,7 +2044,7 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(Bits)
 {
-    sortResult = intcmp(processItem1->IsWow64, processItem2->IsWow64);
+    sortResult = uintcmp(processItem1->IsWow64, processItem2->IsWow64);
 }
 END_SORT_FUNCTION
 
@@ -2202,27 +2227,11 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(PrivateBytesDelta)
 {
-    LONG_PTR value1 = processItem1->PrivateBytesDelta.Delta;
-    LONG_PTR value2 = processItem2->PrivateBytesDelta.Delta;
+    ULONG_PTR value1 = processItem1->PrivateBytesDelta.Delta;
+    ULONG_PTR value2 = processItem2->PrivateBytesDelta.Delta;
 
     // Ignore zero when sorting (dmex)
-    if (value1 != 0 && value2 != 0)
-    {
-        if (value1 > value2)
-            return -1;
-        else if (value1 < value2)
-            return 1;
-
-        return 0;
-    }
-    else if (value1 == 0)
-    {
-        return value2 == 0 ? 0 : (ProcessTreeListSortOrder == AscendingSortOrder ? -1 : 1);
-    }
-    else
-    {
-        return (ProcessTreeListSortOrder == AscendingSortOrder ? 1 : -1);
-    }
+    sortResult = uintptrcmpnull(value1, value2, ProcessTreeListSortOrder);
 }
 END_SORT_FUNCTION
 
@@ -2300,13 +2309,13 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(Subprocesses)
 {
-    sortResult = uint64cmp(node1->Children->Count, node2->Children->Count);
+    sortResult = uintcmp(node1->Children->Count, node2->Children->Count);
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(JobObjectId)
 {
-    sortResult = uint64cmp(processItem1->JobObjectId, processItem2->JobObjectId);
+    sortResult = uintcmp(processItem1->JobObjectId, processItem2->JobObjectId);
 }
 END_SORT_FUNCTION
 
@@ -2338,7 +2347,7 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(HexPid)
 {
-    sortResult = intptrcmp((LONG_PTR)processItem1->ProcessId, (LONG_PTR)processItem2->ProcessId);
+    sortResult = uintptrcmp((ULONG_PTR)processItem1->ProcessId, (ULONG_PTR)processItem2->ProcessId);
 }
 END_SORT_FUNCTION
 
@@ -2413,13 +2422,12 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(ParentPid)
 {
-    sortResult = intptrcmp((LONG_PTR)processItem1->ParentProcessId, (LONG_PTR)processItem2->ParentProcessId);
 }
 END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(ParentConsolePid)
 {
-    sortResult = intptrcmp((LONG_PTR)processItem1->ConsoleHostProcessId, (LONG_PTR)processItem2->ConsoleHostProcessId);
+    sortResult = uintptrcmp((ULONG_PTR)processItem1->ConsoleHostProcessId, (ULONG_PTR)processItem2->ConsoleHostProcessId);
 }
 END_SORT_FUNCTION
 
@@ -2697,16 +2705,6 @@ BOOLEAN NTAPI PhpProcessTreeNewCallback(
                     {
                         PhInitializeStringRefLongHint(&getCellText->Text, processItem->ProcessIdString);
                     }
-                }
-                break;
-            case PHPRTLC_LXSSPID:
-                {
-                    PhInitializeStringRefLongHint(&getCellText->Text, processItem->LxssProcessIdString);
-                }
-                break;
-            case PHPRTLC_START_KEY:
-                {
-                    PhInitializeStringRefLongHint(&getCellText->Text, processItem->ProcessStartKeyString);
                 }
                 break;
             case PHPRTLC_CPU:
@@ -3658,7 +3656,7 @@ BOOLEAN NTAPI PhpProcessTreeNewCallback(
                         break;
                     }
 
-                    PhInitFormatF(&format[0], (DOUBLE)(processItem->ImageCoherency * 100.f), PhMaxPrecisionUnit);
+                    PhInitFormatF(&format[0], processItem->ImageCoherency * 100.f, PhMaxPrecisionUnit);
                     PhInitFormatS(&format[1], L"%");
 
                     PhMoveReference(&node->ImageCoherencyText, PhFormat(format, RTL_NUMBER_OF(format), 0));
@@ -3896,7 +3894,7 @@ BOOLEAN NTAPI PhpProcessTreeNewCallback(
                             PhInitFormatS(&format[3], L"%) | ");
                             PhInitFormatU(&format[4], node->TlsBitmapCount - TLS_MINIMUM_AVAILABLE);
                             PhInitFormatS(&format[5], L" (");
-                            PhInitFormatF(&format[6], (node->TlsBitmapCount - TLS_MINIMUM_AVAILABLE) * 100 / TLS_EXPANSION_SLOTS, 2);
+                            PhInitFormatF(&format[6], (node->TlsBitmapCount - TLS_MINIMUM_AVAILABLE) * 100.f / TLS_EXPANSION_SLOTS, 2);
                             PhInitFormatS(&format[7], L"%)");
 
                             PhMoveReference(&node->TlsBitmapDeltaText, PhFormat(format, RTL_NUMBER_OF(format), 0));
@@ -3908,7 +3906,7 @@ BOOLEAN NTAPI PhpProcessTreeNewCallback(
                             // 64 (100%) | 0 (0%)
                             PhInitFormatU(&format[0], node->TlsBitmapCount);
                             PhInitFormatS(&format[1], L" (");
-                            PhInitFormatF(&format[2], node->TlsBitmapCount * 100 / TLS_MINIMUM_AVAILABLE, 2);
+                            PhInitFormatF(&format[2], node->TlsBitmapCount * 100.f / TLS_MINIMUM_AVAILABLE, 2);
                             PhInitFormatS(&format[3], L"%) | ");
                             PhInitFormatU(&format[4], 0);
                             PhInitFormatS(&format[5], L" (");
@@ -3931,6 +3929,18 @@ BOOLEAN NTAPI PhpProcessTreeNewCallback(
                         PhMoveReference(&node->ReferenceCountText, PhFormatUInt64(node->ReferenceCount, FALSE));
                         getCellText->Text = node->ReferenceCountText->sr;
                     }
+                }
+                break;
+            case PHPRTLC_LXSSPID:
+                {
+                    PhpUpdateProcessNodeLxssProcessId(node);
+
+                    getCellText->Text = PhGetStringRef(node->LxssProcessIdText);
+                }
+                break;
+            case PHPRTLC_START_KEY:
+                {
+                    PhInitializeStringRefLongHint(&getCellText->Text, processItem->ProcessStartKeyString);
                 }
                 break;
             default:

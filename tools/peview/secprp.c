@@ -1283,7 +1283,7 @@ VOID PvpPeEnumerateFileCertificates(
     ULONG certificateContentType;
     ULONG certificateFormatType;
 
-    if (NT_SUCCESS(PhGetMappedImageDataEntry(&PvMappedImage, IMAGE_DIRECTORY_ENTRY_SECURITY, &dataDirectory)))
+    if (NT_SUCCESS(PhGetMappedImageDataDirectory(&PvMappedImage, IMAGE_DIRECTORY_ENTRY_SECURITY, &dataDirectory)))
     {
         LPWIN_CERTIFICATE certificateDirectory = PTR_ADD_OFFSET(PvMappedImage.ViewBase, dataDirectory->VirtualAddress);
         CERT_BLOB certificateBlob = { certificateDirectory->dwLength, certificateDirectory->bCertificate };

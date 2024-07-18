@@ -142,10 +142,10 @@ VOID GraphicsDevicesUpdate(
             LARGE_INTEGER performanceCounter = { 0 };
             ULONG64 sharedUsage = 0;
             ULONG64 sharedCommit = 0;
-            ULONG64 sharedLimit = 0;
+            //ULONG64 sharedLimit = 0;
             ULONG64 dedicatedUsage = 0;
             ULONG64 dedicatedCommit = 0;
-            ULONG64 dedicatedLimit = 0;
+            //ULONG64 dedicatedLimit = 0;
             FLOAT powerUsage;
             FLOAT temperature;
             ULONG fanRPM;

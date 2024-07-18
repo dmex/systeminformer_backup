@@ -171,10 +171,7 @@ PPH_STRING PhGetProcessTooltipText(
                 {
                     PH_IMAGE_VERSION_INFO versionInfo;
 
-                    if (PhInitializeImageVersionInfo(
-                        &versionInfo,
-                        knownCommandLine.RunDllAsApp.FileName->Buffer
-                        ))
+                    if (PhInitializeImageVersionInfo(&versionInfo, &knownCommandLine.RunDllAsApp.FileName->sr))
                     {
                         tempString = PhFormatImageVersionInfo(
                             knownCommandLine.RunDllAsApp.FileName,
@@ -221,7 +218,7 @@ PPH_STRING PhGetProcessTooltipText(
 
                     if (knownCommandLine.ComSurrogate.FileName && PhInitializeImageVersionInfo(
                         &versionInfo,
-                        knownCommandLine.ComSurrogate.FileName->Buffer
+                        &knownCommandLine.ComSurrogate.FileName->sr
                         ))
                     {
                         tempString = PhFormatImageVersionInfo(
@@ -434,7 +431,7 @@ PPH_STRING PhGetProcessTooltipText(
         if ((ULONG_PTR)Process->ConsoleHostProcessId & ~3)
         {
             CLIENT_ID clientId;
-            PWSTR description = L"Console host";
+            PWSTR description;
             PPH_STRING clientIdString;
 
             clientId.UniqueProcess = (HANDLE)((ULONG_PTR)Process->ConsoleHostProcessId & ~3);
@@ -442,6 +439,8 @@ PPH_STRING PhGetProcessTooltipText(
 
             if ((ULONG_PTR)Process->ConsoleHostProcessId & 2)
                 description = L"Console application";
+            else
+                description = L"Console host";
 
             clientIdString = PhGetClientIdName(&clientId);
             PhAppendFormatStringBuilder(&notes, L"    %s: %s\n", description, clientIdString->Buffer);
@@ -792,10 +791,7 @@ PPH_STRING PhGetServiceTooltipText(
             PH_IMAGE_VERSION_INFO versionInfo;
             PPH_STRING versionInfoText;
 
-            if (PhInitializeImageVersionInfo(
-                &versionInfo,
-                fileName->Buffer
-                ))
+            if (PhInitializeImageVersionInfo(&versionInfo, &fileName->sr))
             {
                 versionInfoText = PhFormatImageVersionInfo(
                     fileName,

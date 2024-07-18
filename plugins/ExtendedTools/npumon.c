@@ -76,29 +76,26 @@ VOID EtNpuMonitorInitialization(
 
     if (EtNpuEnabled)
     {
-        ULONG sampleCount;
-        ULONG i;
+        PhInitializeCircularBuffer_FLOAT(&EtNpuNodeHistory, EtSampleCount);
+        PhInitializeCircularBuffer_ULONG(&EtMaxNpuNodeHistory, EtSampleCount);
+        PhInitializeCircularBuffer_FLOAT(&EtMaxNpuNodeUsageHistory, EtSampleCount);
+        PhInitializeCircularBuffer_ULONG64(&EtNpuDedicatedHistory, EtSampleCount);
+        PhInitializeCircularBuffer_ULONG64(&EtNpuSharedHistory, EtSampleCount);
 
-        sampleCount = PhGetIntegerSetting(L"SampleCount");
-        PhInitializeCircularBuffer_FLOAT(&EtNpuNodeHistory, sampleCount);
-        PhInitializeCircularBuffer_ULONG(&EtMaxNpuNodeHistory, sampleCount);
-        PhInitializeCircularBuffer_FLOAT(&EtMaxNpuNodeUsageHistory, sampleCount);
-        PhInitializeCircularBuffer_ULONG64(&EtNpuDedicatedHistory, sampleCount);
-        PhInitializeCircularBuffer_ULONG64(&EtNpuSharedHistory, sampleCount);
         if (EtNpuSupported)
         {
-            PhInitializeCircularBuffer_FLOAT(&EtNpuPowerUsageHistory, sampleCount);
-            PhInitializeCircularBuffer_FLOAT(&EtNpuTemperatureHistory, sampleCount);
-            PhInitializeCircularBuffer_ULONG64(&EtNpuFanRpmHistory, sampleCount);
+            PhInitializeCircularBuffer_FLOAT(&EtNpuPowerUsageHistory, EtSampleCount);
+            PhInitializeCircularBuffer_FLOAT(&EtNpuTemperatureHistory, EtSampleCount);
+            PhInitializeCircularBuffer_ULONG64(&EtNpuFanRpmHistory, EtSampleCount);
         }
 
         if (!EtNpuD3DEnabled)
             EtNpuNodesTotalRunningTimeDelta = PhAllocateZero(sizeof(PH_UINT64_DELTA) * EtNpuTotalNodeCount);
         EtNpuNodesHistory = PhAllocateZero(sizeof(PH_CIRCULAR_BUFFER_FLOAT) * EtNpuTotalNodeCount);
 
-        for (i = 0; i < EtNpuTotalNodeCount; i++)
+        for (ULONG i = 0; i < EtNpuTotalNodeCount; i++)
         {
-            PhInitializeCircularBuffer_FLOAT(&EtNpuNodesHistory[i], sampleCount);
+            PhInitializeCircularBuffer_FLOAT(&EtNpuNodesHistory[i], EtSampleCount);
         }
 
         PhRegisterCallback(

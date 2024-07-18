@@ -263,7 +263,7 @@ BOOLEAN PhSipMemorySectionCallback(
             drawPanel->Title = PhCreateString(L"Memory");
 
             // %.0f%%\n%s / %s
-            PhInitFormatF(&format[0], (DOUBLE)usedPages * 100 / totalPages, 0);
+            PhInitFormatF(&format[0], (FLOAT)usedPages * 100.f / (FLOAT)totalPages, 0);
             PhInitFormatS(&format[1], L"%\n");
             PhInitFormatSizeWithPrecision(&format[2], UInt32x32To64(usedPages, PAGE_SIZE), 1);
             PhInitFormatS(&format[3], L" / ");
@@ -272,7 +272,7 @@ BOOLEAN PhSipMemorySectionCallback(
             drawPanel->SubTitle = PhFormat(format, 5, 64);
 
             // %.0f%%\n%s
-            PhInitFormatF(&format[0], (DOUBLE)usedPages * 100 / totalPages, 0);
+            PhInitFormatF(&format[0], (FLOAT)usedPages * 100.f / (FLOAT)totalPages, 0);
             PhInitFormatS(&format[1], L"%\n");
             PhInitFormatSizeWithPrecision(&format[2], UInt32x32To64(usedPages, PAGE_SIZE), 1);
 

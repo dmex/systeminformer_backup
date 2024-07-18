@@ -597,14 +597,14 @@ VOID PhpUnregisterSymbolProvider(
     {
         if (SymbolProvider->IsRegistered)
         {
+            SymbolProvider->IsRegistered = FALSE;
+
             PH_LOCK_SYMBOLS();
 
             SymCleanup_I(SymbolProvider->ProcessHandle);
 
             PH_UNLOCK_SYMBOLS();
         }
-
-        SymbolProvider->IsRegistered = FALSE;
     }
 }
 

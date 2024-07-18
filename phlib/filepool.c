@@ -62,7 +62,6 @@
 
 #include <ph.h>
 #include <filepool.h>
-
 #include <filepoolp.h>
 
 /**
@@ -283,11 +282,7 @@ NTSTATUS PhCreateFilePool2(
     {
         if (!ReadOnly && createStatus == FILE_CREATED)
         {
-            FILE_DISPOSITION_INFORMATION dispositionInfo;
-            IO_STATUS_BLOCK isb;
-
-            dispositionInfo.DeleteFile = TRUE;
-            NtSetInformationFile(fileHandle, &isb, &dispositionInfo, sizeof(FILE_DISPOSITION_INFORMATION), FileDispositionInformation);
+            PhSetFileDelete(fileHandle);
         }
 
         NtClose(fileHandle);

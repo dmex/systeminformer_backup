@@ -888,7 +888,7 @@ static BOOLEAN NTAPI PhpCsrProcessHandlesCallback(
     )
 {
     NTSTATUS status;
-    BOOLEAN cont = TRUE;
+    BOOLEAN result = TRUE;
     PCSR_HANDLES_CONTEXT context = Context;
     HANDLE processHandle;
     KERNEL_USER_TIMES times;
@@ -923,7 +923,7 @@ static BOOLEAN NTAPI PhpCsrProcessHandlesCallback(
                 entry.Type = HiddenProcess;
 
             if (context && !context->Callback(&entry, context->Context))
-                cont = FALSE;
+                result = FALSE;
 
             PhDereferenceObject(entry.FileNameWin32);
             PhDereferenceObject(entry.FileName);
@@ -939,10 +939,10 @@ static BOOLEAN NTAPI PhpCsrProcessHandlesCallback(
         entry.Type = UnknownProcess;
 
         if (context && !context->Callback(&entry, context->Context))
-            cont = FALSE;
+            result = FALSE;
     }
 
-    return cont;
+    return result;
 }
 
 NTSTATUS PhpEnumHiddenProcessesCsrHandles(

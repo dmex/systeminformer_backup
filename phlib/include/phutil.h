@@ -847,17 +847,17 @@ typedef struct _PH_IMAGE_VERSION_INFO
     PPH_STRING ProductName;
 } PH_IMAGE_VERSION_INFO, *PPH_IMAGE_VERSION_INFO;
 
-PHLIBAPI
 _Success_(return)
+PHLIBAPI
 BOOLEAN
 NTAPI
 PhInitializeImageVersionInfo(
     _Out_ PPH_IMAGE_VERSION_INFO ImageVersionInfo,
-    _In_ PWSTR FileName
+    _In_ PPH_STRINGREF FileName
     );
 
-PHLIBAPI
 _Success_(return)
+PHLIBAPI
 BOOLEAN
 NTAPI
 PhInitializeImageVersionInfoEx(

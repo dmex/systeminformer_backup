@@ -515,22 +515,10 @@ VOID StatusBarUpdate(
 
                 if (tnHandle = GetCurrentTreeNewHandle())
                 {
-                    ULONG j;
-                    ULONG visibleCount;
-                    ULONG selectedCount;
                     PH_FORMAT format[2];
 
-                    visibleCount = TreeNew_GetFlatNodeCount(tnHandle);
-                    selectedCount = 0;
-
-                    for (j = 0; j < visibleCount; j++)
-                    {
-                        if (TreeNew_GetFlatNode(tnHandle, j)->Selected)
-                            selectedCount++;
-                    }
-
                     PhInitFormatS(&format[0], L"Selected: ");
-                    PhInitFormatI64UGroupDigits(&format[1], selectedCount);
+                    PhInitFormatI64UGroupDigits(&format[1], TreeNew_GetSelectedCountDirect(tnHandle));
 
                     PhFormatToBuffer(format, RTL_NUMBER_OF(format), text[count], sizeof(text[count]), &textLength[count]);
                 }

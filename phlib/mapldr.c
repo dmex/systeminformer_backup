@@ -624,8 +624,7 @@ CleanupExit:
  * and does not need to be allocated or deallocated. This function cannot be used when the
  * image will be unloaded since the validity of the address is tied to the lifetime of the image.
  */
-_Success_(return)
-BOOLEAN PhLoadResource(
+NTSTATUS PhLoadResource(
     _In_ PVOID DllBase,
     _In_ PCWSTR Name,
     _In_ PCWSTR Type,
@@ -633,27 +632,30 @@ BOOLEAN PhLoadResource(
     _Out_opt_ PVOID *ResourceBuffer
     )
 {
+    NTSTATUS status;
     LDR_RESOURCE_INFO resourceInfo;
     PIMAGE_RESOURCE_DATA_ENTRY resourceData;
     ULONG resourceLength;
-    PVOID resourceBuffer;
+    PWSTR resourceBuffer;
 
     resourceInfo.Type = (ULONG_PTR)Type;
     resourceInfo.Name = (ULONG_PTR)Name;
     resourceInfo.Language = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
 
-    if (!NT_SUCCESS(LdrFindResource_U(DllBase, &resourceInfo, RESOURCE_DATA_LEVEL, &resourceData)))
-        return FALSE;
+    status = LdrFindResource_U(DllBase, &resourceInfo, RESOURCE_DATA_LEVEL, &resourceData);
+    if (!NT_SUCCESS(status))
+        return status;
 
-    if (!NT_SUCCESS(LdrAccessResource(DllBase, resourceData, &resourceBuffer, &resourceLength)))
-        return FALSE;
+    status = LdrAccessResource(DllBase, resourceData, &resourceBuffer, &resourceLength);
+    if (!NT_SUCCESS(status))
+        return status;
 
     if (ResourceLength)
         *ResourceLength = resourceLength;
     if (ResourceBuffer)
         *ResourceBuffer = resourceBuffer;
 
-    return TRUE;
+    return status;
 }
 
  /**
@@ -670,8 +672,7 @@ BOOLEAN PhLoadResource(
   * \remarks This function returns a copy of a resource from heap memory
   * and must be deallocated. Use this function when the image will be unloaded.
   */
-_Success_(return)
-BOOLEAN PhLoadResourceCopy(
+NTSTATUS PhLoadResourceCopy(
     _In_ PVOID DllBase,
     _In_ PCWSTR Name,
     _In_ PCWSTR Type,
@@ -679,16 +680,25 @@ BOOLEAN PhLoadResourceCopy(
     _Out_opt_ PVOID *ResourceBuffer
     )
 {
+    NTSTATUS status;
     ULONG resourceLength;
     PVOID resourceBuffer;
 
-    if (!PhLoadResource(DllBase, Name, Type, &resourceLength, &resourceBuffer))
-        return FALSE;
+    status = PhLoadResource(
+        DllBase,
+        Name,
+        Type,
+        &resourceLength,
+        &resourceBuffer
+        );
 
-    if (ResourceLength)
-        *ResourceLength = resourceLength;
-    if (ResourceBuffer)
-        *ResourceBuffer = PhAllocateCopy(resourceBuffer, resourceLength);
+    if (NT_SUCCESS(status))
+    {
+        if (ResourceLength)
+            *ResourceLength = resourceLength;
+        if (ResourceBuffer)
+            *ResourceBuffer = PhAllocateCopy(resourceBuffer, resourceLength);
+    }
 
     return TRUE;
 }
@@ -714,13 +724,13 @@ PPH_STRING PhLoadString(
     PVOID resourceBuffer;
     ULONG stringIndex;
 
-    if (!PhLoadResource(
+    if (!NT_SUCCESS(PhLoadResource(
         DllBase,
         MAKEINTRESOURCE(resourceId),
         RT_STRING,
         &resourceLength,
         &resourceBuffer
-        ))
+        )))
     {
         return NULL;
     }
@@ -903,19 +913,28 @@ BOOLEAN PhGetLoaderEntryData(
 
         if (FullName)
         {
-            PH_STRINGREF fullName;
             PPH_STRING fileName;
 
-            PhUnicodeStringToStringRef(&entry->FullDllName, &fullName);
-
-            if (fileName = PhDosPathNameToNtPathName(&fullName))
+            if (NT_SUCCESS(PhGetProcessMappedFileName(NtCurrentProcess(), entry->DllBase, &fileName)))
             {
                 *FullName = fileName;
                 result = TRUE;
             }
             else
             {
-                result = FALSE;
+                PH_STRINGREF fullName;
+
+                PhUnicodeStringToStringRef(&entry->FullDllName, &fullName);
+
+                if (fileName = PhDosPathNameToNtPathName(&fullName))
+                {
+                    *FullName = fileName;
+                    result = TRUE;
+                }
+                else
+                {
+                    result = FALSE;
+                }
             }
         }
     }
@@ -1152,7 +1171,7 @@ NTSTATUS PhGetLoaderEntryImageVaToSection(
 
     for (ULONG i = 0; i < ImageNtHeader->FileHeader.NumberOfSections; i++)
     {
-        sectionHeader = PTR_ADD_OFFSET(section, UInt32x32To64(sizeof(IMAGE_SECTION_HEADER), i));
+        sectionHeader = PTR_ADD_OFFSET(section, UInt32x32To64(IMAGE_SIZEOF_SECTION_HEADER, i));
 
         if (
             ((ULONG_PTR)ImageDirectoryAddress >= (ULONG_PTR)PTR_ADD_OFFSET(BaseAddress, sectionHeader->VirtualAddress)) &&
@@ -1191,7 +1210,7 @@ NTSTATUS PhLoaderEntryImageRvaToSection(
 
     for (ULONG i = 0; i < ImageNtHeader->FileHeader.NumberOfSections; i++)
     {
-        sectionHeader = PTR_ADD_OFFSET(section, UInt32x32To64(sizeof(IMAGE_SECTION_HEADER), i));
+        sectionHeader = PTR_ADD_OFFSET(section, UInt32x32To64(IMAGE_SIZEOF_SECTION_HEADER, i));
 
         if (
             ((ULONG_PTR)Rva >= (ULONG_PTR)sectionHeader->VirtualAddress) &&
@@ -2282,9 +2301,9 @@ NTSTATUS PhLoaderEntryRelocateImage(
         PIMAGE_SECTION_HEADER sectionHeader;
         PVOID sectionHeaderAddress;
         SIZE_T sectionHeaderSize;
-        ULONG sectionProtectionJunk = 0;
+        ULONG sectionProtection = 0;
 
-        sectionHeader = PTR_ADD_OFFSET(IMAGE_FIRST_SECTION(imageNtHeader), UInt32x32To64(sizeof(IMAGE_SECTION_HEADER), i));
+        sectionHeader = PTR_ADD_OFFSET(IMAGE_FIRST_SECTION(imageNtHeader), UInt32x32To64(IMAGE_SIZEOF_SECTION_HEADER, i));
         sectionHeaderAddress = PTR_ADD_OFFSET(BaseAddress, sectionHeader->VirtualAddress);
         sectionHeaderSize = sectionHeader->SizeOfRawData;
 
@@ -2293,7 +2312,7 @@ NTSTATUS PhLoaderEntryRelocateImage(
             &sectionHeaderAddress,
             &sectionHeaderSize,
             PAGE_READWRITE,
-            &sectionProtectionJunk
+            &sectionProtection
             );
 
         if (!NT_SUCCESS(status))
@@ -2343,7 +2362,7 @@ NTSTATUS PhLoaderEntryRelocateImage(
         ULONG sectionProtection = 0;
         ULONG sectionProtectionJunk = 0;
 
-        sectionHeader = PTR_ADD_OFFSET(IMAGE_FIRST_SECTION(imageNtHeader), UInt32x32To64(sizeof(IMAGE_SECTION_HEADER), i));
+        sectionHeader = PTR_ADD_OFFSET(IMAGE_FIRST_SECTION(imageNtHeader), UInt32x32To64(IMAGE_SIZEOF_SECTION_HEADER, i));
         sectionHeaderAddress = PTR_ADD_OFFSET(BaseAddress, sectionHeader->VirtualAddress);
         sectionHeaderSize = sectionHeader->SizeOfRawData;
 

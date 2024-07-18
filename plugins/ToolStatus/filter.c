@@ -111,11 +111,11 @@ BOOLEAN ProcessTreeFilterCallback(
         }
     }
 
-    if (processNode->ProcessItem->LxssProcessIdString[0])
-    {
-        if (PhSearchControlMatchLongHintZ(SearchMatchHandle, processNode->ProcessItem->LxssProcessIdString))
-            return TRUE;
-    }
+    //if (processNode->ProcessItem->LxssProcessIdString[0])
+    //{
+    //    if (PhSearchControlMatchLongHintZ(SearchMatchHandle, processNode->ProcessItem->LxssProcessIdString))
+    //        return TRUE;
+    //}
 
     if (!PhIsNullOrEmptyString(processNode->ProcessItem->PackageFullName))
     {

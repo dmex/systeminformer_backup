@@ -76,6 +76,7 @@ BEGIN
             VALUE "OriginalFilename", "SystemInformer.exe"
             VALUE "ProductName", "System Informer"
             VALUE "ProductVersion", PHAPP_VERSION_STRING
+            VALUE "CommitHash", PHAPP_VERSION_COMMITHASH
         END
     END
     BLOCK "VarFileInfo"

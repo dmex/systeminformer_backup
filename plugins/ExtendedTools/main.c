@@ -77,6 +77,9 @@ VOID NTAPI LoadCallback(
 
     EtLoadSettings();
 
+    if (SystemInformer_IsServiceMode())
+        return;
+
     EtEtwStatisticsInitialization();
     EtGpuMonitorInitialization();
     EtNpuMonitorInitialization();

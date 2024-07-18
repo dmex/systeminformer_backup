@@ -84,6 +84,7 @@ EXTERN_C ULONG EtWindowsVersion;
 EXTERN_C BOOLEAN EtIsExecutingInWow64;
 EXTERN_C BOOLEAN EtGpuFahrenheitEnabled;
 EXTERN_C BOOLEAN EtNpuFahrenheitEnabled;
+EXTERN_C ULONG EtSampleCount;
 extern ULONG ProcessesUpdatedCount;
 extern ULONG EtUpdateInterval;
 extern USHORT EtMaxPrecisionUnit;
@@ -549,8 +550,8 @@ VOID EtFormatNetworkSize(
     _In_ PPH_PLUGIN_TREENEW_MESSAGE Message
     );
 
-VOID EtFormatDouble(
-    _In_ DOUBLE Value,
+VOID EtFormatSingle(
+    _In_ FLOAT Value,
     _In_ PET_PROCESS_BLOCK Block,
     _In_ PPH_PLUGIN_TREENEW_MESSAGE Message
     );

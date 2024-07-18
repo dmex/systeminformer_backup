@@ -1269,13 +1269,13 @@ VOID PhMwpOnProcessesUpdated(
     // We have to invalidate the text on each update.
     PhTickProcessNodes();
 
+    if (events)
+        TreeNew_SetRedraw(PhMwpProcessTreeNewHandle, TRUE);
+
     if (PhPluginsEnabled)
     {
-        PhInvokeCallback(PhGetGeneralCallback(GeneralCallbackProcessesUpdated), NULL);
+        PhInvokeCallback(PhGetGeneralCallback(GeneralCallbackProcessesUpdated), UlongToPtr(RunId));
     }
-
-    if (count != 0)
-        TreeNew_SetRedraw(PhMwpProcessTreeNewHandle, TRUE);
 
     if (NeedsSelectPid != 0)
     {

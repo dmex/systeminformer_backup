@@ -1238,13 +1238,13 @@ NTSTATUS PhGetProcessDefaultHeap(
 //    )
 //{
 //    NTSTATUS status;
-//    BOOLEAN cont = FALSE;
+//    BOOLEAN result = FALSE;
 //    HANDLE processHandle;
 //    HANDLE threadHandle;
 //
 //    if (PhGetIntegerSetting(L"EnableWarnings"))
 //    {
-//        cont = PhShowConfirmMessage(
+//        result = PhShowConfirmMessage(
 //            hWnd,
 //            L"destroy",
 //            L"the selected heap",
@@ -1254,10 +1254,10 @@ NTSTATUS PhGetProcessDefaultHeap(
 //    }
 //    else
 //    {
-//        cont = TRUE;
+//        result = TRUE;
 //    }
 //
-//    if (!cont)
+//    if (!result)
 //        return FALSE;
 //
 //    if (NT_SUCCESS(status = PhOpenProcess(

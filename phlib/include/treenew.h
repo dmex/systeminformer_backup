@@ -1,9 +1,19 @@
+/*
+ * Copyright (c) 2022 Winsider Seminars & Solutions, Inc.  All rights reserved.
+ *
+ * This file is part of System Informer.
+ *
+ * Authors:
+ *
+ *     wj32    2011-2016
+ *     dmex    2017-2024
+ *
+ */
+
 #ifndef _PH_TREENEW_H
 #define _PH_TREENEW_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+EXTERN_C_START
 
 #define PH_TREENEW_CLASSNAME L"PhTreeNew"
 
@@ -435,7 +445,8 @@ typedef struct _PH_TREENEW_SET_HEADER_CACHE
 #define TNM_ENSUREVISIBLEINDEX (WM_USER + 49)
 #define TNM_GETVISIBLECOLUMN (WM_USER + 50)
 #define TNM_GETVISIBLECOLUMNARRAY (WM_USER + 51)
-#define TNM_LAST (WM_USER + 52)
+#define TNM_GETSELECTEDCOUNT (WM_USER + 52)
+#define TNM_LAST (WM_USER + 53)
 
 #define TreeNew_SetCallback(hWnd, Callback, Context) \
     SendMessage((hWnd), TNM_SETCALLBACK, (WPARAM)(Context), (LPARAM)(Callback))
@@ -584,6 +595,9 @@ typedef struct _PH_TREENEW_SET_HEADER_CACHE
 #define TreeNew_GetVisibleColumnArray(hWnd, Count, ColumnArray) \
     ((BOOLEAN)SendMessage((hWnd), TNM_GETVISIBLECOLUMNARRAY, (WPARAM)(Count), (LPARAM)(ColumnArray)))
 
+#define TreeNew_GetSelectedCount(hWnd) \
+    ((ULONG)SendMessage((hWnd), TNM_GETSELECTEDCOUNT, 0, 0))
+
 typedef struct _PH_TREENEW_VIEW_PARTS
 {
     RECT ClientRect;
@@ -599,7 +613,9 @@ typedef struct _PH_TREENEW_VIEW_PARTS
 } PH_TREENEW_VIEW_PARTS, *PPH_TREENEW_VIEW_PARTS;
 
 PHLIBAPI
-BOOLEAN PhTreeNewInitialization(
+BOOLEAN
+NTAPI
+PhTreeNewInitialization(
     VOID
     );
 
@@ -725,5 +741,6 @@ FORCEINLINE BOOLEAN PhAddTreeNewColumnEx2(
 #ifdef __cplusplus
 }
 #endif
+EXTERN_C_END
 
 #endif

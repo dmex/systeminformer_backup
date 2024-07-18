@@ -163,7 +163,7 @@ INT_PTR CALLBACK PhpProcessRecordDlgProc(
                     NULL
                     );
 
-                if (PhInitializeImageVersionInfo(&versionInfo, context->Record->FileName->Buffer))
+                if (PhInitializeImageVersionInfo(&versionInfo, &context->Record->FileName->sr))
                     versionInfoInitialized = TRUE;
             }
 

@@ -88,7 +88,7 @@ VOID PhInitializeThreadList(
     PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_TID, TRUE, L"TID", 50, PH_ALIGN_RIGHT, 0, DT_RIGHT);
     PhAddTreeNewColumnEx(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_CPU, TRUE, L"CPU", 45, PH_ALIGN_RIGHT, 1, DT_RIGHT, TRUE);
     PhAddTreeNewColumnEx(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_CYCLESDELTA, TRUE, L"Cycles delta", 80, PH_ALIGN_RIGHT, 2, DT_RIGHT, TRUE);
-    PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_STARTADDRESS, TRUE, L"Start address", 180, PH_ALIGN_LEFT, 3, 0);
+    PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_STARTADDRESSWIN32, TRUE, L"Start address (Win32)", 180, PH_ALIGN_LEFT, 3, 0);
     PhAddTreeNewColumnEx(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_PRIORITYSYMBOLIC, TRUE, L"Priority (symbolic)", 80, PH_ALIGN_LEFT, 4, 0, TRUE);
     // Available columns
     PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_SERVICE, FALSE, L"Service", 100, PH_ALIGN_LEFT, ULONG_MAX, 0);
@@ -130,6 +130,7 @@ VOID PhInitializeThreadList(
     PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_IOOTHERBYTES, FALSE, L"I/O other bytes", 50, PH_ALIGN_LEFT, ULONG_MAX, 0);
     PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_LXSSTID, FALSE, L"TID (LXSS)", 50, PH_ALIGN_LEFT, ULONG_MAX, 0);
     PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_POWERTHROTTLING, FALSE, L"Power throttling", 50, PH_ALIGN_LEFT, ULONG_MAX, 0);
+    PhAddTreeNewColumn(TreeNewHandle, PH_THREAD_TREELIST_COLUMN_STARTADDRESS, TRUE, L"Start address", 180, PH_ALIGN_LEFT, 3, 0);
 
     TreeNew_SetRedraw(TreeNewHandle, TRUE);
     TreeNew_SetTriState(TreeNewHandle, TRUE);
@@ -1043,16 +1044,16 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(CpuCore)
 {
-    DOUBLE cpuUsage1;
-    DOUBLE cpuUsage2;
+    FLOAT cpuUsage1;
+    FLOAT cpuUsage2;
 
-    cpuUsage1 = threadItem1->CpuUsage * 100;
-    cpuUsage1 *= PhSystemProcessorInformation.NumberOfProcessors;
+    cpuUsage1 = threadItem1->CpuUsage * 100.f;
+    cpuUsage1 = cpuUsage1 * PhSystemProcessorInformation.NumberOfProcessors;
 
-    cpuUsage2 = threadItem2->CpuUsage * 100;
-    cpuUsage2 *= PhSystemProcessorInformation.NumberOfProcessors;
+    cpuUsage2 = threadItem2->CpuUsage * 100.f;
+    cpuUsage2 = cpuUsage2 * PhSystemProcessorInformation.NumberOfProcessors;
 
-    sortResult = doublecmp(cpuUsage1, cpuUsage2);
+    sortResult = singlecmp(cpuUsage1, cpuUsage2);
 }
 END_SORT_FUNCTION
 
@@ -1142,7 +1143,7 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(WaitTime)
 {
-    sortResult = uint64cmp(threadItem1->WaitTime, threadItem2->WaitTime);
+    sortResult = uintcmp(threadItem1->WaitTime, threadItem2->WaitTime);
 }
 END_SORT_FUNCTION
 
@@ -1190,7 +1191,13 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(PowerThrottling)
 {
-    sortResult = uintcmp(threadItem1->PowerThrottling, threadItem2->PowerThrottling);
+    sortResult = ucharcmp(threadItem1->PowerThrottling, threadItem2->PowerThrottling);
+}
+END_SORT_FUNCTION
+
+BEGIN_SORT_FUNCTION(NativeStartAddress)
+{
+    sortResult = uint64cmp(threadItem1->NativeStartAddress, threadItem2->NativeStartAddress);
 }
 END_SORT_FUNCTION
 
@@ -1261,6 +1268,7 @@ BOOLEAN NTAPI PhpThreadTreeNewCallback(
                     SORT_FUNCTION(IoOtherBytes),
                     SORT_FUNCTION(LxssTid),
                     SORT_FUNCTION(PowerThrottling),
+                    SORT_FUNCTION(NativeStartAddress),
                 };
                 int (__cdecl *sortFunction)(void *, const void *, const void *);
 
@@ -1368,15 +1376,11 @@ BOOLEAN NTAPI PhpThreadTreeNewCallback(
                     }
                     else
                     {
-                        if (threadItem->ContextSwitchesDelta.Delta != threadItem->ContextSwitchesDelta.Value && threadItem->ContextSwitchesDelta.Delta != 0)
-                        {
-                            PhMoveReference(&node->CyclesDeltaText, PhFormatUInt64(threadItem->ContextSwitchesDelta.Delta, TRUE));
-                            getCellText->Text = node->CyclesDeltaText->sr;
-                        }
+                        PhInitializeEmptyStringRef(&getCellText->Text);
                     }
                 }
                 break;
-            case PH_THREAD_TREELIST_COLUMN_STARTADDRESS:
+            case PH_THREAD_TREELIST_COLUMN_STARTADDRESSWIN32:
                 PhSwapReference(&node->StartAddressText, threadItem->StartAddressString);
                 getCellText->Text = PhGetStringRef(node->StartAddressText);
                 break;
@@ -1601,7 +1605,7 @@ BOOLEAN NTAPI PhpThreadTreeNewCallback(
                     FLOAT cpuUsage;
 
                     cpuUsage = threadItem->CpuUsage * 100;
-                    cpuUsage *= PhSystemProcessorInformation.NumberOfProcessors; // linux style (dmex)
+                    cpuUsage = cpuUsage * PhSystemProcessorInformation.NumberOfProcessors;
 
                     if (cpuUsage >= 0.01f)
                     {
@@ -2033,9 +2037,14 @@ BOOLEAN NTAPI PhpThreadTreeNewCallback(
             case PH_THREAD_TREELIST_COLUMN_POWERTHROTTLING:
                 {
                     if (threadItem->PowerThrottling)
-                    {
                         PhInitializeStringRef(&getCellText->Text, L"Yes");
-                    }
+                    else
+                        PhInitializeEmptyStringRef(&getCellText->Text);
+                }
+                break;
+            case PH_THREAD_TREELIST_COLUMN_STARTADDRESS:
+                {
+                    getCellText->Text = PhGetStringRef(threadItem->NativeStartAddressString);
                 }
                 break;
             default:

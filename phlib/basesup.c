@@ -254,9 +254,7 @@ NTSTATUS PhCreateUserThread(
     PPS_ATTRIBUTE_LIST attributeList = (PPS_ATTRIBUTE_LIST)buffer;
     CLIENT_ID clientId = { 0 };
 
-    InitializeObjectAttributes(&objectAttributes, NULL, 0, NULL, NULL);
-    objectAttributes.SecurityDescriptor = ThreadSecurityDescriptor;
-
+    InitializeObjectAttributes(&objectAttributes, NULL, 0, NULL, ThreadSecurityDescriptor);
     attributeList->TotalLength = sizeof(buffer);
     attributeList->Attributes[0].Attribute = PS_ATTRIBUTE_CLIENT_ID;
     attributeList->Attributes[0].Size = sizeof(CLIENT_ID);
@@ -514,10 +512,10 @@ VOID PhQuerySystemTime(
 
     while (TRUE)
     {
-        SystemTime->HighPart = (ULONG)USER_SHARED_DATA->SystemTime.High1Time;
+        SystemTime->HighPart = USER_SHARED_DATA->SystemTime.High1Time;
         SystemTime->LowPart = USER_SHARED_DATA->SystemTime.LowPart;
 
-        if (SystemTime->HighPart == (ULONG)USER_SHARED_DATA->SystemTime.High2Time)
+        if (SystemTime->HighPart == USER_SHARED_DATA->SystemTime.High2Time)
             break;
 
         YieldProcessor();
@@ -553,10 +551,10 @@ VOID PhQueryTimeZoneBias(
 
     while (TRUE)
     {
-        TimeZoneBias->HighPart = (ULONG)USER_SHARED_DATA->TimeZoneBias.High1Time;
+        TimeZoneBias->HighPart = USER_SHARED_DATA->TimeZoneBias.High1Time;
         TimeZoneBias->LowPart = USER_SHARED_DATA->TimeZoneBias.LowPart;
 
-        if (TimeZoneBias->HighPart == (ULONG)USER_SHARED_DATA->TimeZoneBias.High2Time)
+        if (TimeZoneBias->HighPart == USER_SHARED_DATA->TimeZoneBias.High2Time)
             break;
 
         YieldProcessor();
@@ -4990,7 +4988,6 @@ VOID PhClearList(
     List->Count = 0;
 }
 
-_Success_(return != -1)
 /**
  * Locates an item in a list.
  *
@@ -5000,6 +4997,7 @@ _Success_(return != -1)
  * \return The index of the item. If the
  * item was not found, -1 is returned.
  */
+_Success_(return != -1)
 ULONG PhFindItemList(
     _In_ PPH_LIST List,
     _In_ PVOID Item
@@ -7733,6 +7731,21 @@ PVOID PhTlsGetValue(
     }
 
     return TlsGetValue(Index);
+}
+
+NTSTATUS PhTlsGetValueEx(
+    _In_ ULONG Index,
+    _Out_ PVOID* Value
+    )
+{
+    if (WindowsVersion < WINDOWS_NEW && Index < TLS_MINIMUM_AVAILABLE)
+    {
+        *Value = NtCurrentTeb()->TlsSlots[Index];
+        return STATUS_SUCCESS;
+    }
+
+    *Value = TlsGetValue(Index);
+    return PhGetLastWin32ErrorAsNtStatus();
 }
 
 NTSTATUS PhTlsSetValue(

@@ -841,6 +841,21 @@ PhEqualBytesZ(
 }
 
 FORCEINLINE
+BOOLEAN
+PhEqualBytesLengthZ(
+    _In_ PSTR String1,
+    _In_ PSTR String2,
+    _In_ SIZE_T MaxCount,
+    _In_ BOOLEAN IgnoreCase
+    )
+{
+    if (IgnoreCase)
+        return _strnicmp(String1, String2, MaxCount) == 0;
+    else
+        return strncmp(String1, String2, MaxCount) == 0;
+}
+
+FORCEINLINE
 LONG
 PhCompareStringZ(
     _In_ PWSTR String1,
@@ -2509,6 +2524,38 @@ PhAppendFormatStringBuilder_V(
     _In_ va_list ArgPtr
     );
 
+FORCEINLINE
+VOID
+NTAPI
+PhAppendUInt32StringBuilder(
+    _Inout_ PPH_STRING_BUILDER StringBuilder,
+    _In_ ULONG Value
+    )
+{
+    PH_STRINGREF string;
+    WCHAR value[PH_INT32_STR_LEN_1];
+
+    PhPrintUInt32(value, Value);
+    PhInitializeStringRef(&string, value);
+    PhAppendStringBuilder(StringBuilder, &string);
+}
+
+FORCEINLINE
+VOID
+NTAPI
+PhAppendUInt64StringBuilder(
+    _Inout_ PPH_STRING_BUILDER StringBuilder,
+    _In_ ULONG64 Value
+    )
+{
+    PH_STRINGREF string;
+    WCHAR value[PH_INT64_STR_LEN_1];
+
+    PhPrintUInt64(value, Value);
+    PhInitializeStringRef(&string, value);
+    PhAppendStringBuilder(StringBuilder, &string);
+}
+
 PHLIBAPI
 VOID
 NTAPI
@@ -4093,6 +4140,7 @@ typedef enum _PH_FORMAT_TYPE
     UInt32FormatType,
     UInt64FormatType,
     UIntPtrFormatType,
+    SingleFormatType,
     DoubleFormatType,
     SizeFormatType,
     FormatTypeMask = 0x3f,
@@ -4178,6 +4226,7 @@ typedef struct _PH_FORMAT
         ULONG UInt32;
         ULONG64 UInt64;
         ULONG_PTR UIntPtr;
+        FLOAT Single;
         DOUBLE Double;
 
         ULONG64 Size;
@@ -4373,6 +4422,19 @@ FORCEINLINE
 VOID
 PhInitFormatF(
     _Out_ PPH_FORMAT Format,
+    _In_ FLOAT Single,
+    _In_ USHORT Precision
+    )
+{
+    Format->Type = (PH_FORMAT_TYPE)(SingleFormatType | FormatUsePrecision);
+    Format->u.Single = Single;
+    Format->Precision = Precision;
+}
+
+FORCEINLINE
+VOID
+PhInitFormatFD(
+    _Out_ PPH_FORMAT Format,
     _In_ DOUBLE Double,
     _In_ USHORT Precision
     )
@@ -4452,8 +4514,21 @@ PhFormatToBuffer(
     _Out_opt_ PSIZE_T ReturnLength
     );
 
-PHLIBAPI
 _Success_(return)
+PHLIBAPI
+BOOLEAN
+NTAPI
+PhFormatSingleToUtf8(
+    _In_ FLOAT Value,
+    _In_ ULONG Type,
+    _In_ ULONG Precision,
+    _Out_writes_bytes_opt_(BufferLength) PSTR Buffer,
+    _In_opt_ SIZE_T BufferLength,
+    _Out_opt_ PSIZE_T ReturnLength
+    );
+
+_Success_(return)
+PHLIBAPI
 BOOLEAN
 NTAPI
 PhFormatDoubleToUtf8(

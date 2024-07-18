@@ -75,29 +75,26 @@ VOID EtGpuMonitorInitialization(
 
     if (EtGpuEnabled)
     {
-        ULONG sampleCount;
-        ULONG i;
+        PhInitializeCircularBuffer_FLOAT(&EtGpuNodeHistory, EtSampleCount);
+        PhInitializeCircularBuffer_ULONG(&EtMaxGpuNodeHistory, EtSampleCount);
+        PhInitializeCircularBuffer_FLOAT(&EtMaxGpuNodeUsageHistory, EtSampleCount);
+        PhInitializeCircularBuffer_ULONG64(&EtGpuDedicatedHistory, EtSampleCount);
+        PhInitializeCircularBuffer_ULONG64(&EtGpuSharedHistory, EtSampleCount);
 
-        sampleCount = PhGetIntegerSetting(L"SampleCount");
-        PhInitializeCircularBuffer_FLOAT(&EtGpuNodeHistory, sampleCount);
-        PhInitializeCircularBuffer_ULONG(&EtMaxGpuNodeHistory, sampleCount);
-        PhInitializeCircularBuffer_FLOAT(&EtMaxGpuNodeUsageHistory, sampleCount);
-        PhInitializeCircularBuffer_ULONG64(&EtGpuDedicatedHistory, sampleCount);
-        PhInitializeCircularBuffer_ULONG64(&EtGpuSharedHistory, sampleCount);
         if (EtGpuSupported)
         {
-            PhInitializeCircularBuffer_FLOAT(&EtGpuPowerUsageHistory, sampleCount);
-            PhInitializeCircularBuffer_FLOAT(&EtGpuTemperatureHistory, sampleCount);
-            PhInitializeCircularBuffer_ULONG64(&EtGpuFanRpmHistory, sampleCount);
+            PhInitializeCircularBuffer_FLOAT(&EtGpuPowerUsageHistory, EtSampleCount);
+            PhInitializeCircularBuffer_FLOAT(&EtGpuTemperatureHistory, EtSampleCount);
+            PhInitializeCircularBuffer_ULONG64(&EtGpuFanRpmHistory, EtSampleCount);
         }
 
         if (!EtGpuD3DEnabled)
             EtGpuNodesTotalRunningTimeDelta = PhAllocateZero(sizeof(PH_UINT64_DELTA) * EtGpuTotalNodeCount);
         EtGpuNodesHistory = PhAllocateZero(sizeof(PH_CIRCULAR_BUFFER_FLOAT) * EtGpuTotalNodeCount);
 
-        for (i = 0; i < EtGpuTotalNodeCount; i++)
+        for (ULONG i = 0; i < EtGpuTotalNodeCount; i++)
         {
-            PhInitializeCircularBuffer_FLOAT(&EtGpuNodesHistory[i], sampleCount);
+            PhInitializeCircularBuffer_FLOAT(&EtGpuNodesHistory[i], EtSampleCount);
         }
 
         PhRegisterCallback(

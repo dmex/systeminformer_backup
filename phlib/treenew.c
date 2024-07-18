@@ -1063,25 +1063,24 @@ VOID PhTnpOnXxxButtonXxx(
                 if (hitTest.Node)
                     saveIndex = hitTest.Node->Index;
                 else
-                    saveIndex = -1;
 
                 if (hitTest.Column)
                     saveId = hitTest.Column->Id;
                 else
-                    saveId = -1;
+                    saveId = ULONG_MAX;
 
                 result = PhTnpDetectDrag(Context, CursorX, CursorY, TRUE, &cancelledByMessage);
 
                 // Restore the pointers.
 
-                if (saveIndex == -1)
+                if (saveIndex == ULONG_MAX)
                     hitTest.Node = NULL;
                 else if (saveIndex < Context->FlatList->Count)
                     hitTest.Node = Context->FlatList->Items[saveIndex];
                 else
                     return;
 
-                if (saveId != -1 && !(hitTest.Column = PhTnpLookupColumnById(Context, saveId)))
+                if (saveId != ULONG_MAX && !(hitTest.Column = PhTnpLookupColumnById(Context, saveId)))
                     return;
 
                 if (result)
@@ -1855,6 +1854,9 @@ ULONG_PTR PhTnpOnUserMessage(
         {
             ULONG index = (ULONG)WParam;
 
+            if (Context->SuspendUpdateStructure)
+                return (LRESULT)NULL;
+
             if (index >= Context->FlatList->Count)
                 return (LRESULT)NULL;
 
@@ -2097,6 +2099,24 @@ ULONG_PTR PhTnpOnUserMessage(
             }
 
             return TRUE;
+        }
+        break;
+    case TNM_GETSELECTEDCOUNT:
+        {
+            ULONG count = 0;
+
+            if (Context->SuspendUpdateStructure)
+                return (LRESULT)NULL;
+
+            for (ULONG i = 0; i < Context->FlatList->Count; i++)
+            {
+                if (((PPH_TREENEW_NODE)Context->FlatList->Items[i])->Selected)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
         break;
     }

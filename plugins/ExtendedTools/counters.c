@@ -722,7 +722,6 @@ VOID EtPerfCounterCleanupDeletedGpuEngineCounters(
     _In_ ULONG NumberOfCounters
     )
 {
-    PPH_LIST countersToAdd = NULL;
     PPH_HASHTABLE newHashTable;
     PPH_HASHTABLE oldHashTable;
     PET_GPU_PROCESS_PERFCOUNTER counter;

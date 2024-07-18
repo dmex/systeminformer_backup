@@ -319,9 +319,9 @@ PPH_STRING NetworkPingLabelYFunction(
     _In_ FLOAT Parameter
     )
 {
-    DOUBLE value;
+    FLOAT value;
 
-    value = (DOUBLE)(Parameter);
+    value = (FLOAT)(Parameter);
 
     if (value != 0)
     {

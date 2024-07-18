@@ -2217,13 +2217,13 @@ PVOID PhGetFileVersionInfo(
     if (!libraryModule)
         return NULL;
 
-    if (PhLoadResourceCopy(
+    if (NT_SUCCESS(PhLoadResourceCopy(
         libraryModule,
         MAKEINTRESOURCE(VS_VERSION_INFO),
         VS_FILE_INFO,
         NULL,
         &versionInfo
-        ))
+        )))
     {
         if (PhIsFileVersionInfo32(versionInfo))
         {
@@ -2248,13 +2248,13 @@ PVOID PhGetFileVersionInfoEx(
     if (!NT_SUCCESS(PhLoadLibraryAsImageResource(FileName, TRUE, &imageBaseAddress)))
         return NULL;
 
-    if (PhLoadResourceCopy(
+    if (NT_SUCCESS(PhLoadResourceCopy(
         imageBaseAddress,
         MAKEINTRESOURCE(VS_VERSION_INFO),
         VS_FILE_INFO,
         NULL,
         &versionInfo
-        ))
+        )))
     {
         if (PhIsFileVersionInfo32(versionInfo))
         {
@@ -2623,13 +2623,16 @@ VOID PhpGetImageVersionVersionStringEx(
 _Success_(return)
 BOOLEAN PhInitializeImageVersionInfo(
     _Out_ PPH_IMAGE_VERSION_INFO ImageVersionInfo,
-    _In_ PWSTR FileName
+    _In_ PPH_STRINGREF FileName
     )
 {
+    PPH_STRING fileName;
     PVOID versionInfo;
     ULONG langCodePage;
 
-    versionInfo = PhGetFileVersionInfo(FileName);
+    fileName = PhConcatStringRef2(&PhNtDosDevicesPrefix, FileName);
+    versionInfo = PhGetFileVersionInfoEx(&fileName->sr); // PhGetFileVersionInfo(FileName)
+    PhDereferenceObject(fileName);
 
     if (!versionInfo)
         return FALSE;
@@ -3331,7 +3334,7 @@ PPH_STRING PhGetApplicationFileName(
     )
 {
     static PPH_STRING cachedFileName = NULL;
-    PPH_STRING fileName = NULL;
+    PPH_STRING fileName;
 
     if (fileName = InterlockedCompareExchangePointer(
         &cachedFileName,
@@ -3342,51 +3345,24 @@ PPH_STRING PhGetApplicationFileName(
         return PhReferenceObject(fileName);
     }
 
-#if (PH_NATIVE_FILENAME)
     if (!NT_SUCCESS(PhGetProcessImageFileName(NtCurrentProcess(), &fileName)))
     {
         if (!NT_SUCCESS(PhGetProcessImageFileNameByProcessId(NtCurrentProcessId(), &fileName)))
         {
             if (!NT_SUCCESS(PhGetProcessMappedFileName(NtCurrentProcess(), PhInstanceHandle, &fileName)))
             {
-                if (fileName = PhGetDllFileName(PhInstanceHandle, NULL))
-                {
-                    PPH_STRING fullPath;
-
-                    if (NT_SUCCESS(PhGetFullPath(PhGetString(fileName), &fullPath, NULL)))
-                    {
-                        PhMoveReference(&fileName, fullPath);
-                    }
-
-                    PhMoveReference(&fileName, PhDosPathNameToNtPathName(&fileName->sr));
-                }
+                PhGetProcessMappedFileName(NtCurrentProcess(), NtCurrentImageBase(), &fileName);
             }
         }
     }
-#else
+
+    if (!InterlockedCompareExchangePointer(
+        &cachedFileName,
+        fileName,
+        NULL
+        ))
     {
-        if (fileName = PhGetDllFileName(PhInstanceHandle, NULL))
-        {
-            PPH_STRING fullPath;
-
-            if (NT_SUCCESS(PhGetFullPath(PhGetString(fileName), &fullPath, NULL)))
-            {
-                PhMoveReference(&fileName, fullPath);
-            }
-
-            PhMoveReference(&fileName, PhDosPathNameToNtPathName(&fileName->sr));
-        }
-    }
-#endif
-
-    if (fileName)
-    {
-        PPH_STRING previousFileName;
-
         PhReferenceObject(fileName);
-
-        if (previousFileName = InterlockedExchangePointer(&cachedFileName, fileName))
-            PhDereferenceObject(previousFileName);
     }
 
     return fileName;
@@ -3400,7 +3376,7 @@ PPH_STRING PhGetApplicationFileNameWin32(
     )
 {
     static PPH_STRING cachedFileName = NULL;
-    PPH_STRING fileName = NULL;
+    PPH_STRING fileName;
 
     if (fileName = InterlockedCompareExchangePointer(
         &cachedFileName,
@@ -3411,40 +3387,25 @@ PPH_STRING PhGetApplicationFileNameWin32(
         return PhReferenceObject(fileName);
     }
 
-#if (PH_NATIVE_FILENAME)
     if (!NT_SUCCESS(PhGetProcessImageFileNameWin32(NtCurrentProcess(), &fileName)))
     {
-        if (NT_SUCCESS(PhGetProcessMappedFileName(NtCurrentProcess(), PhInstanceHandle, &fileName)))
-        {
-            PhMoveReference(&fileName, PhGetFileName(fileName));
-        }
-        else if (NT_SUCCESS(PhGetProcessImageFileNameByProcessId(NtCurrentProcessId(), &fileName)))
+        if (
+            NT_SUCCESS(PhGetProcessImageFileNameByProcessId(NtCurrentProcessId(), &fileName)) ||
+            NT_SUCCESS(PhGetProcessMappedFileName(NtCurrentProcess(), PhInstanceHandle, &fileName)) ||
+            NT_SUCCESS(PhGetProcessMappedFileName(NtCurrentProcess(), NtCurrentImageBase(), &fileName))
+            )
         {
             PhMoveReference(&fileName, PhGetFileName(fileName));
         }
     }
-#else
+
+    if (!InterlockedCompareExchangePointer(
+        &cachedFileName,
+        fileName,
+        NULL
+        ))
     {
-        if (fileName = PhGetDllFileName(PhInstanceHandle, NULL))
-        {
-            PPH_STRING fullPath;
-
-            if (NT_SUCCESS(PhGetFullPath(PhGetString(fileName), &fullPath, NULL)))
-            {
-                PhMoveReference(&fileName, fullPath);
-            }
-        }
-    }
-#endif
-
-    if (fileName)
-    {
-        PPH_STRING previousFileName;
-
         PhReferenceObject(fileName);
-
-        if (previousFileName = InterlockedExchangePointer(&cachedFileName, fileName))
-            PhDereferenceObject(previousFileName);
     }
 
     return fileName;
@@ -3455,7 +3416,7 @@ PPH_STRING PhGetApplicationDirectory(
     )
 {
     static PPH_STRING cachedDirectoryPath = NULL;
-    PPH_STRING directoryPath = NULL;
+    PPH_STRING directoryPath;
     PPH_STRING fileName;
 
     if (directoryPath = InterlockedCompareExchangePointer(
@@ -3486,14 +3447,13 @@ PPH_STRING PhGetApplicationDirectory(
         PhDereferenceObject(fileName);
     }
 
-    if (directoryPath)
+    if (!InterlockedCompareExchangePointer(
+        &cachedDirectoryPath,
+        directoryPath,
+        NULL
+        ))
     {
-        PPH_STRING previousDirectoryPath;
-
         PhReferenceObject(directoryPath);
-
-        if (previousDirectoryPath = InterlockedExchangePointer(&cachedDirectoryPath, directoryPath))
-            PhDereferenceObject(previousDirectoryPath);
     }
 
     return directoryPath;
@@ -3507,7 +3467,7 @@ PPH_STRING PhGetApplicationDirectoryWin32(
     )
 {
     static PPH_STRING cachedDirectoryPath = NULL;
-    PPH_STRING directoryPath = NULL;
+    PPH_STRING directoryPath;
     PPH_STRING fileName;
 
     if (directoryPath = InterlockedCompareExchangePointer(
@@ -3538,14 +3498,13 @@ PPH_STRING PhGetApplicationDirectoryWin32(
         PhDereferenceObject(fileName);
     }
 
-    if (directoryPath)
+    if (!InterlockedCompareExchangePointer(
+        &cachedDirectoryPath,
+        directoryPath,
+        NULL
+        ))
     {
-        PPH_STRING previousDirectoryPath;
-
         PhReferenceObject(directoryPath);
-
-        if (previousDirectoryPath = InterlockedExchangePointer(&cachedDirectoryPath, directoryPath))
-            PhDereferenceObject(previousDirectoryPath);
     }
 
     return directoryPath;
@@ -6886,7 +6845,7 @@ BOOLEAN PhParseCommandLine(
     SIZE_T i;
     SIZE_T j;
     SIZE_T length;
-    BOOLEAN cont = TRUE;
+    BOOLEAN result = TRUE;
     BOOLEAN wasFirst = TRUE;
 
     PH_STRINGREF optionName;
@@ -6915,10 +6874,10 @@ BOOLEAN PhParseCommandLine(
             // Read the value and execute the callback function.
 
             optionValue = PhParseCommandLinePart(CommandLine, &i);
-            cont = Callback(option, optionValue, Context);
+            result = Callback(option, optionValue, Context);
             PhDereferenceObject(optionValue);
 
-            if (!cont)
+            if (!result)
                 break;
 
             option = NULL;
@@ -6950,9 +6909,9 @@ BOOLEAN PhParseCommandLine(
 
             if (option && option->Type == OptionalArgumentType)
             {
-                cont = Callback(option, NULL, Context);
+                result = Callback(option, NULL, Context);
 
-                if (!cont)
+                if (!result)
                     break;
 
                 option = NULL;
@@ -6976,9 +6935,9 @@ BOOLEAN PhParseCommandLine(
 
             if (option && option->Type == NoArgumentType)
             {
-                cont = Callback(option, NULL, Context);
+                result = Callback(option, NULL, Context);
 
-                if (!cont)
+                if (!result)
                     break;
 
                 option = NULL;
@@ -7000,10 +6959,10 @@ BOOLEAN PhParseCommandLine(
 
             if (value)
             {
-                cont = Callback(NULL, value, Context);
+                result = Callback(NULL, value, Context);
                 PhDereferenceObject(value);
 
-                if (!cont)
+                if (!result)
                     break;
             }
 
@@ -7011,7 +6970,7 @@ BOOLEAN PhParseCommandLine(
         }
     }
 
-    if (cont && option && option->Type == OptionalArgumentType)
+    if (result && option && option->Type == OptionalArgumentType)
         Callback(option, NULL, Context);
 
     return TRUE;

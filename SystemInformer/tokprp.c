@@ -4421,7 +4421,8 @@ typedef enum _AppModelPolicy_Type
     AppModelPolicy_Type_AppInstancingErrorBehavior = 56, // since WIN11
     AppModelPolicy_Type_BackgroundTaskRegistrationType = 57,
     AppModelPolicy_Type_ModsPowerNotification = 58,
-    AppModelPolicy_Type_Count = 58,
+    AppModelPolicy_Type_DamRegistration = 59, // since 24H2
+    AppModelPolicy_Type_Count = 59,
 } AppModelPolicy_Type;
 
 typedef enum _AppModelPolicy_PolicyValue
@@ -4555,6 +4556,8 @@ typedef enum _AppModelPolicy_PolicyValue
     AppModelPolicy_Type_ModsPowerNotification_Disabled = 0x3a0000,
     AppModelPolicy_Type_ModsPowerNotification_Enabled = 0x3a0001,
     AppModelPolicy_Type_ModsPowerNotification_QueryDam = 0x3a0002,
+    AppModelPolicy_Type_DamRegistration_DoNotRegister = 0x3b0000,
+    AppModelPolicy_Type_DamRegistration_RegisterAtLaunch = 0x3b0001
 } AppModelPolicy_PolicyValue;
 
 #define WM_PH_APPMODEL_SYMBOL_RESULT (WM_APP + 101)

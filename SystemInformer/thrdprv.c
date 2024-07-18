@@ -83,6 +83,12 @@ PPH_OBJECT_TYPE PhThreadItemType = NULL;
 PH_WORK_QUEUE PhThreadProviderWorkQueue;
 PH_INITONCE PhThreadProviderWorkQueueInitOnce = PH_INITONCE_INIT;
 
+/**
+ * Queues a work item to the thread provider work queue.
+ *
+ * @param Function The function to execute as the work item.
+ * @param Context The context for the work item.
+ */
 VOID PhpQueueThreadWorkQueueItem(
     _In_ PUSER_THREAD_START_ROUTINE Function,
     _In_opt_ PVOID Context
@@ -97,6 +103,12 @@ VOID PhpQueueThreadWorkQueueItem(
     PhQueueItemWorkQueue(&PhThreadProviderWorkQueue, Function, Context);
 }
 
+/**
+ * Creates a thread provider object.
+ *
+ * @param ProcessId The process ID.
+ * @return The created thread provider object.
+ */
 PPH_THREAD_PROVIDER PhCreateThreadProvider(
     _In_ HANDLE ProcessId
     )
@@ -151,6 +163,12 @@ PPH_THREAD_PROVIDER PhCreateThreadProvider(
     return threadProvider;
 }
 
+/**
+ * Deletes a thread provider object.
+ *
+ * @param Object The thread provider object to delete.
+ * @param Flags The deletion flags.
+ */
 VOID PhpThreadProviderDeleteProcedure(
     _In_ PVOID Object,
     _In_ ULONG Flags
@@ -294,7 +312,7 @@ VOID PhLoadSymbolsThreadProvider(
             loadContext.ProcessId = ThreadProvider->ProcessId;
             PhEnumGenericModules(
                 ThreadProvider->ProcessId,
-                ThreadProvider->SymbolProvider->ProcessHandle,
+                ThreadProvider->ProcessHandle,
                 0,
                 LoadSymbolsEnumGenericModulesCallback,
                 &loadContext
@@ -373,6 +391,12 @@ PPH_THREAD_ITEM PhCreateThreadItem(
     return threadItem;
 }
 
+/**
+ * Deletes a thread item object.
+ *
+ * @param Object The thread item object to delete.
+ * @param Flags The deletion flags.
+ */
 VOID PhpThreadItemDeleteProcedure(
     _In_ PVOID Object,
     _In_ ULONG Flags
@@ -470,36 +494,22 @@ NTSTATUS PhpThreadQueryWorker(
     )
 {
     PPH_THREAD_QUERY_DATA data = (PPH_THREAD_QUERY_DATA)Parameter;
-    LONG newSymbolsLoading;
 
     if (data->ThreadProvider->Terminating)
-        goto Done;
+        goto CleanupExit;
 
-    newSymbolsLoading = _InterlockedIncrement(&data->ThreadProvider->SymbolsLoading);
-
-    if (newSymbolsLoading == 1)
-        PhInvokeCallback(&data->ThreadProvider->LoadingStateChangedEvent, UlongToPtr(TRUE));
-
-    if (data->ThreadProvider->SymbolsLoadedRunId == 0)
-        PhLoadSymbolsThreadProvider(data->ThreadProvider);
-
-    data->StartAddressString = PhGetSymbolFromAddress(
-        data->ThreadProvider->SymbolProvider,
-        data->ThreadItem->StartAddress,
-        &data->StartAddressResolveLevel,
-        &data->StartAddressFileName,
-        NULL,
-        NULL
-        );
-
-    if (data->StartAddressResolveLevel == PhsrlAddress && data->ThreadProvider->SymbolsLoadedRunId < data->RunId)
+    if (data->ThreadItem->StartAddress)
     {
-        // The process may have loaded new modules, so load symbols for those and try again.
+        LONG newSymbolsLoading;
 
-        PhLoadSymbolsThreadProvider(data->ThreadProvider);
+        newSymbolsLoading = _InterlockedIncrement(&data->ThreadProvider->SymbolsLoading);
 
-        PhClearReference(&data->StartAddressString);
-        PhClearReference(&data->StartAddressFileName);
+        if (newSymbolsLoading == 1)
+            PhInvokeCallback(&data->ThreadProvider->LoadingStateChangedEvent, UlongToPtr(TRUE));
+
+        if (data->ThreadProvider->SymbolsLoadedRunId == 0)
+            PhLoadSymbolsThreadProvider(data->ThreadProvider);
+
         data->StartAddressString = PhGetSymbolFromAddress(
             data->ThreadProvider->SymbolProvider,
             data->ThreadItem->StartAddress,
@@ -508,12 +518,31 @@ NTSTATUS PhpThreadQueryWorker(
             NULL,
             NULL
             );
+
+        if (data->StartAddressResolveLevel == PhsrlAddress && data->ThreadProvider->SymbolsLoadedRunId < data->RunId)
+        {
+            // The process may have loaded new modules, so load symbols for those and try again.
+
+            PhLoadSymbolsThreadProvider(data->ThreadProvider);
+
+            PhClearReference(&data->StartAddressString);
+            PhClearReference(&data->StartAddressFileName);
+
+            data->StartAddressString = PhGetSymbolFromAddress(
+                data->ThreadProvider->SymbolProvider,
+                data->ThreadItem->StartAddress,
+                &data->StartAddressResolveLevel,
+                &data->StartAddressFileName,
+                NULL,
+                NULL
+                );
+        }
+
+        newSymbolsLoading = _InterlockedDecrement(&data->ThreadProvider->SymbolsLoading);
+
+        if (newSymbolsLoading == 0)
+            PhInvokeCallback(&data->ThreadProvider->LoadingStateChangedEvent, UlongToPtr(FALSE));
     }
-
-    newSymbolsLoading = _InterlockedDecrement(&data->ThreadProvider->SymbolsLoading);
-
-    if (newSymbolsLoading == 0)
-        PhInvokeCallback(&data->ThreadProvider->LoadingStateChangedEvent, (PVOID)FALSE);
 
     // Check if the process has services - we'll need to know before getting service tag/name
     // information.
@@ -531,10 +560,7 @@ NTSTATUS PhpThreadQueryWorker(
     }
 
     // Get the service tag, and the service name.
-    if (
-        data->ThreadProvider->SymbolProvider->IsRealHandle &&
-        data->ThreadItem->ThreadHandle
-        )
+    if (data->ThreadItem->ThreadHandle && data->ThreadProvider->HasServices)
     {
         PVOID serviceTag;
 
@@ -551,7 +577,7 @@ NTSTATUS PhpThreadQueryWorker(
         }
     }
 
-Done:
+CleanupExit:
     RtlInterlockedPushEntrySList(&data->ThreadProvider->QueryListHead, &data->ListEntry);
     PhDereferenceObject(data->ThreadProvider);
 
@@ -577,12 +603,12 @@ VOID PhpQueueThreadQuery(
 PPH_STRING PhpGetThreadBasicStartAddress(
     _In_ PPH_THREAD_PROVIDER ThreadProvider,
     _In_ ULONG64 Address,
-    _Out_ PPH_SYMBOL_RESOLVE_LEVEL ResolveLevel
+    _Out_ PULONG ResolveLevel
     )
 {
-    ULONG64 modBase;
-    PPH_STRING fileName = NULL;
-    PPH_STRING baseName = NULL;
+    ULONG64 baseAddress;
+    PPH_STRING fileName;
+    PPH_STRING baseName;
     PPH_STRING symbol;
 
     modBase = PhGetModuleFromAddress(
@@ -591,32 +617,29 @@ PPH_STRING PhpGetThreadBasicStartAddress(
         &fileName
         );
 
-    if (fileName == NULL)
+    if (PhIsNullOrEmptyString(fileName))
     {
-        *ResolveLevel = PhsrlAddress;
+        WCHAR pointer[PH_PTR_STR_LEN_1];
 
-        symbol = PhCreateStringEx(NULL, PH_PTR_STR_LEN * sizeof(WCHAR));
-        PhPrintPointer(symbol->Buffer, (PVOID)Address);
-        PhTrimToNullTerminatorString(symbol);
+        PhPrintPointer(pointer, (PVOID)Address);
+        symbol = PhCreateString(pointer);
+        *ResolveLevel = PhsrlAddress;
     }
     else
     {
         PH_FORMAT format[3];
 
         baseName = PhGetBaseName(fileName);
-        *ResolveLevel = PhsrlModule;
-
         PhInitFormatSR(&format[0], baseName->sr);
         PhInitFormatS(&format[1], L"+0x");
-        PhInitFormatIX(&format[2], (ULONG_PTR)(Address - modBase));
+        PhInitFormatIX(&format[2], (ULONG_PTR)(Address - baseAddress));
 
         symbol = PhFormat(format, 3, baseName->Length + 6 + 32);
-    }
 
-    if (fileName)
-        PhDereferenceObject(fileName);
-    if (baseName)
-        PhDereferenceObject(baseName);
+        PhClearReference(&baseName);
+        PhClearReference(&fileName);
+        *ResolveLevel = PhsrlModule;
+    }
 
     return symbol;
 }
@@ -659,23 +682,25 @@ static NTSTATUS PhpGetThreadCycleTime(
     _Out_ PULONG64 CycleTime
     )
 {
-    if (ThreadProvider->ProcessId != SYSTEM_IDLE_PROCESS_ID)
-    {
-        if (ThreadItem->ThreadHandle)
-        {
-            return PhGetThreadCycleTime(ThreadItem->ThreadHandle, CycleTime);
-        }
-    }
-    else
+    if (ThreadProvider->ProcessId == SYSTEM_IDLE_PROCESS_ID)
     {
         if (HandleToUlong(ThreadItem->ThreadId) < PhSystemProcessorInformation.NumberOfProcessors)
         {
             *CycleTime = PhCpuIdleCycleTime[HandleToUlong(ThreadItem->ThreadId)].CycleTime;
             return STATUS_SUCCESS;
         }
+        else
+        {
+            return STATUS_INVALID_PARAMETER;
+        }
     }
 
-    return STATUS_INVALID_PARAMETER;
+    if (ThreadItem->ThreadHandle)
+    {
+        return PhGetThreadCycleTime(ThreadItem->ThreadHandle, CycleTime);
+    }
+
+    return STATUS_ACCESS_DENIED;
 }
 
 PPH_STRING PhGetBasePriorityIncrementString(
@@ -720,6 +745,12 @@ VOID PhThreadProviderInitialUpdate(
     }
 }
 
+/**
+ * Callback handler for the thread provider.
+ *
+ * @param Parameter The callback parameter.
+ * @param Context The callback context.
+ */
 VOID PhpThreadProviderCallbackHandler(
     _In_opt_ PVOID Parameter,
     _In_opt_ PVOID Context
@@ -731,6 +762,12 @@ VOID PhpThreadProviderCallbackHandler(
     }
 }
 
+/**
+ * Updates the thread provider.
+ *
+ * @param ThreadProvider The thread provider to update.
+ * @param ProcessInformation The process information.
+ */
 VOID PhpThreadProviderUpdate(
     _In_ PPH_THREAD_PROVIDER ThreadProvider,
     _In_ PVOID ProcessInformation
@@ -748,6 +785,7 @@ VOID PhpThreadProviderUpdate(
     if (!process)
     {
         // The process doesn't exist anymore. Pretend it does but has no threads.
+        memset(&localProcess, 0, sizeof(SYSTEM_PROCESS_INFORMATION));
         process = &localProcess;
         process->NumberOfThreads = 0;
 
@@ -880,6 +918,7 @@ VOID PhpThreadProviderUpdate(
 
         if (!threadItem)
         {
+            NTSTATUS status;
             ULONG_PTR startAddress = 0;
 
             threadItem = PhCreateThreadItem(thread->ClientId.UniqueThread);
@@ -889,14 +928,18 @@ VOID PhpThreadProviderUpdate(
             PhUpdateDelta(&threadItem->ContextSwitchesDelta, thread->ContextSwitches);
             threadItem->Priority = thread->Priority;
             threadItem->BasePriority = thread->BasePriority;
-            threadItem->State = (KTHREAD_STATE)thread->ThreadState;
+            threadItem->State = thread->ThreadState;
             threadItem->WaitReason = thread->WaitReason;
 
-            PhpGetThreadHandle(
+            status = PhpGetThreadHandle(
                 &threadItem->ThreadHandle,
                 threadProvider,
                 threadItem
                 );
+
+            // Initialize the CPU time deltas.
+            PhUpdateDelta(&threadItem->CpuKernelDelta, threadItem->KernelTime.QuadPart);
+            PhUpdateDelta(&threadItem->CpuUserDelta, threadItem->UserTime.QuadPart);
 
             // Get the cycle count.
             {
@@ -912,21 +955,50 @@ VOID PhpThreadProviderUpdate(
                 }
             }
 
-            // Initialize the CPU time deltas.
-            PhUpdateDelta(&threadItem->CpuKernelDelta, threadItem->KernelTime.QuadPart);
-            PhUpdateDelta(&threadItem->CpuUserDelta, threadItem->UserTime.QuadPart);
-
             // Try to get the start address.
 
             if (threadItem->ThreadHandle)
             {
                 PhGetThreadStartAddress(threadItem->ThreadHandle, &startAddress);
             }
+            else
+            {
+                PPH_STRING message;
+
+                message = PhGetStatusMessage(status, 0);
+                threadItem->StartAddressString = PhFormatString(
+                    L"%s (0x%x)",
+                    PhGetStringOrDefault(message, L"Unknown"),
+                    status
+                    );
+                PhClearReference(&message);
+            }
 
             if (!startAddress)
                 startAddress = thread->StartAddress;
 
             threadItem->StartAddress = (ULONG64)startAddress;
+
+            if (threadItem->StartAddress)
+            {
+                if (threadProvider->SymbolsLoadedRunId != 0)
+                {
+                    threadItem->StartAddressString = PhpGetThreadBasicStartAddress(
+                        threadProvider,
+                        threadItem->StartAddress,
+                        &threadItem->StartAddressResolveLevel
+                        );
+                }
+
+                if (PhIsNullOrEmptyString(threadItem->StartAddressString))
+                {
+                    WCHAR pointer[PH_PTR_STR_LEN_1];
+
+                    PhPrintPointer(pointer, (PVOID)threadItem->StartAddress);
+                    threadItem->StartAddressString = PhCreateString(pointer);
+                    threadItem->StartAddressResolveLevel = PhsrlAddress;
+                }
+            }
 
             // Get the base priority increment (relative to the process priority).
             if (threadItem->ThreadHandle && NT_SUCCESS(PhGetThreadBasicInformation(
@@ -941,27 +1013,6 @@ VOID PhpThreadProviderUpdate(
                 threadItem->BasePriorityIncrement = THREAD_PRIORITY_ERROR_RETURN;
             }
 
-            if (threadProvider->SymbolsLoadedRunId != 0)
-            {
-                threadItem->StartAddressString = PhpGetThreadBasicStartAddress(
-                    threadProvider,
-                    threadItem->StartAddress,
-                    &threadItem->StartAddressResolveLevel
-                    );
-            }
-
-            if (!threadItem->StartAddressString)
-            {
-                threadItem->StartAddressResolveLevel = PhsrlAddress;
-                threadItem->StartAddressString = PhCreateStringEx(NULL, PH_PTR_STR_LEN * sizeof(WCHAR));
-                PhPrintPointer(
-                    threadItem->StartAddressString->Buffer,
-                    (PVOID)threadItem->StartAddress
-                    );
-                PhTrimToNullTerminatorString(threadItem->StartAddressString);
-            }
-
-            // Is it a GUI thread?
             if (threadItem->ThreadId)
             {
                 threadItem->IsGuiThread = PhGetThreadWin32Thread(threadItem->ThreadId);
@@ -1037,18 +1088,11 @@ VOID PhpThreadProviderUpdate(
             {
                 if (threadProvider->SymbolsLoadedRunId != 0)
                 {
-                    PPH_STRING newStartAddressString;
-
-                    newStartAddressString = PhpGetThreadBasicStartAddress(
+                    PhMoveReference(&threadItem->StartAddressString, PhpGetThreadBasicStartAddress(
                         threadProvider,
                         threadItem->StartAddress,
                         &threadItem->StartAddressResolveLevel
-                        );
-
-                    PhMoveReference(
-                        &threadItem->StartAddressString,
-                        newStartAddressString
-                        );
+                        ));
 
                     modified = TRUE;
                 }

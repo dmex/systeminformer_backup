@@ -461,11 +461,11 @@ VOID PhServiceQueryStage1(
     {
         if (!FlagOn(serviceItem->Type, SERVICE_DRIVER)) // Skip icons for kernel drivers (dmex)
         {
-            Data->IconEntry = PhImageListExtractIcon(fileName, FALSE, 0, NULL, PhSystemDpi);
+            Data->IconEntry = PhImageListExtractIcon(fileName, FALSE, NULL, NULL, PhSystemDpi);
         }
 
         // Version info.
-        //PhInitializeImageVersionInfo(&Data->VersionInfo, fileName->Buffer);
+        //PhInitializeImageVersionInfo(&Data->VersionInfo, &fileName->sr);
     }
 }
 

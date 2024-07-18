@@ -145,7 +145,6 @@ PPH_STRING NetworkAdapterQueryNameFromInterfaceGuid(
         _In_ BOOL Cache,
         _In_ BOOL Refresh
         ) = NULL;
-    GUID interfaceGuid = { 0 };
     WCHAR adapterDescription[NDIS_IF_MAX_STRING_SIZE + 1] = L"";
     SIZE_T adapterDescriptionLength = sizeof(adapterDescription);
 
@@ -191,7 +190,6 @@ PPH_STRING NetworkAdapterQueryNameFromDeviceGuid(
         _In_ BOOL Cache,
         _In_ BOOL Refresh
         ) = NULL;
-    GUID interfaceGuid = { 0 };
     WCHAR adapterAlias[NDIS_IF_MAX_STRING_SIZE + 1] = L"";
     SIZE_T adapterAliasLength = sizeof(adapterAlias);
 
@@ -264,7 +262,6 @@ PPH_STRING NetworkAdapterGetInterfaceAliasNameFromGuid(
         _In_ BOOL Cache,
         _In_ BOOL Refresh
         ) = NULL;
-    GUID interfaceGuid = { 0 };
     WCHAR adapterAlias[NDIS_IF_MAX_STRING_SIZE + 1] = L"";
     SIZE_T adapterAliasLength = sizeof(adapterAlias);
 

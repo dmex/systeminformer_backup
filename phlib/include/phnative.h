@@ -2595,6 +2595,15 @@ PhMoveFileWin32(
 PHLIBAPI
 NTSTATUS
 NTAPI
+PhMoveFile(
+    _In_ PPH_STRINGREF OldFileName,
+    _In_ PPH_STRINGREF NewFileName,
+    _In_ BOOLEAN FailIfExists
+    );
+
+PHLIBAPI
+NTSTATUS
+NTAPI
 PhCreateDirectoryWin32(
     _In_ PPH_STRINGREF DirectoryPath
     );

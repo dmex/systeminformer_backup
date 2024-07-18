@@ -6,7 +6,7 @@
  * Authors:
  *
  *     wj32    2016
- *     dmex    2017-2023
+ *     dmex    2017-2024
  *
  */
 
@@ -58,6 +58,7 @@ typedef enum _PH_MAINWINDOW_CALLBACK_TYPE
     PH_MAINWINDOW_CALLBACK_TYPE_WINDOW_HANDLE,
     PH_MAINWINDOW_CALLBACK_TYPE_VERSION,
     PH_MAINWINDOW_CALLBACK_TYPE_PORTABLE,
+    PH_MAINWINDOW_CALLBACK_TYPE_PHSVC,
     PH_MAINWINDOW_CALLBACK_TYPE_MAXIMUM
 } PH_MAINWINDOW_CALLBACK_TYPE;
 
@@ -124,6 +125,8 @@ PhPluginInvokeWindowCallback(
     (PtrToUlong(PhPluginInvokeWindowCallback(PH_MAINWINDOW_CALLBACK_TYPE_VERSION, 0, 0)))
 #define ProcessHacker_IsPortableMode() \
     ((BOOLEAN)PtrToUlong(PhPluginInvokeWindowCallback(PH_MAINWINDOW_CALLBACK_TYPE_PORTABLE, 0, 0)))
+#define SystemInformer_IsServiceMode() \
+    ((BOOLEAN)PtrToUlong(PhPluginInvokeWindowCallback(PH_MAINWINDOW_CALLBACK_TYPE_PHSVC, 0, 0)))
 
 #define PhWindowsVersion ProcessHacker_GetWindowsVersion() // Temporary backwards compat (dmex)
 #define PhMainWindowHandle ProcessHacker_GetWindowHandle() // Temporary backwards compat (dmex)

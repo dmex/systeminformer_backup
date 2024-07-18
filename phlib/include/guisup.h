@@ -1003,6 +1003,49 @@ PhRemoveWindowContextEx(
 #endif
 }
 
+FORCEINLINE
+PVOID
+NTAPI
+PhGetDialogContext(
+    _In_ HWND WindowHandle
+    )
+{
+#if (PHNT_WINDOW_CLASS_CONTEXT)
+    return PhGetWindowContext(WindowHandle, MAXCHAR);
+#else
+    return (PVOID)GetWindowLongPtr(WindowHandle, DWLP_USER);
+#endif
+}
+
+FORCEINLINE
+VOID
+NTAPI
+PhSetDialogContext(
+    _In_ HWND WindowHandle,
+    _In_ PVOID Context
+    )
+{
+#if (PHNT_WINDOW_CLASS_CONTEXT)
+    PhSetWindowContext(WindowHandle, MAXCHAR, Context);
+#else
+    SetWindowLongPtr(WindowHandle, DWLP_USER, (LONG_PTR)Context);
+#endif
+}
+
+FORCEINLINE
+VOID
+NTAPI
+PhRemoveDialogContext(
+    _In_ HWND WindowHandle
+    )
+{
+#if (PHNT_WINDOW_CLASS_CONTEXT)
+    PhRemoveWindowContext(WindowHandle, MAXCHAR);
+#else
+    SetWindowLongPtr(WindowHandle, DWLP_USER, (LONG_PTR)NULL);
+#endif
+}
+
 typedef BOOL (CALLBACK* PH_ENUM_CALLBACK)(
     _In_ HWND WindowHandle,
     _In_opt_ PVOID Context
@@ -1952,7 +1995,6 @@ PhGetCurrentThreadDesktopName(
     VOID
     );
 
-_Success_(return)
 PHLIBAPI
 BOOLEAN
 NTAPI

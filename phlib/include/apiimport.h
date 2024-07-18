@@ -47,6 +47,14 @@ typedef NTSTATUS (NTAPI *_NtQueryInformationTransactionManager)(
     _Out_opt_ PULONG ReturnLength
     );
 
+typedef NTSTATUS (NTAPI *_NtQueryInformationByName)(
+    _In_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID FileInformation,
+    _In_ ULONG Length,
+    _In_ FILE_INFORMATION_CLASS FileInformationClass
+    );
+
 typedef NTSTATUS (NTAPI* _NtSetInformationVirtualMemory)(
     _In_ HANDLE ProcessHandle,
     _In_ VIRTUAL_MEMORY_INFORMATION_CLASS VmInformationClass,
@@ -235,6 +243,7 @@ PH_DECLARE_IMPORT(NtQueryInformationEnlistment);
 PH_DECLARE_IMPORT(NtQueryInformationResourceManager);
 PH_DECLARE_IMPORT(NtQueryInformationTransaction);
 PH_DECLARE_IMPORT(NtQueryInformationTransactionManager);
+PH_DECLARE_IMPORT(NtQueryInformationByName);
 PH_DECLARE_IMPORT(NtSetInformationVirtualMemory);
 PH_DECLARE_IMPORT(NtCreateProcessStateChange);
 PH_DECLARE_IMPORT(NtChangeProcessState);

@@ -23,7 +23,7 @@
 typedef enum _PH_GENERAL_CALLBACK
 {
     GeneralCallbackMainWindowShowing = 0, // INT ShowCommand [main thread]
-    GeneralCallbackProcessesUpdated = 1, // [main thread]
+    GeneralCallbackProcessesUpdated = 1, // ULONG RunId [main thread]
     GeneralCallbackGetProcessHighlightingColor = 2, // PPH_PLUGIN_GET_HIGHLIGHTING_COLOR Data [main thread]
     GeneralCallbackGetProcessTooltipText = 3, // PPH_PLUGIN_GET_TOOLTIP_TEXT Data [main thread]
     GeneralCallbackProcessPropertiesInitializing = 4, // PPH_PLUGIN_PROCESS_PROPCONTEXT Data [properties thread]
