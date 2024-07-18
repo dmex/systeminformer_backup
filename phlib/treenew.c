@@ -1063,6 +1063,7 @@ VOID PhTnpOnXxxButtonXxx(
                 if (hitTest.Node)
                     saveIndex = hitTest.Node->Index;
                 else
+                    saveIndex = ULONG_MAX;
 
                 if (hitTest.Column)
                     saveId = hitTest.Column->Id;
