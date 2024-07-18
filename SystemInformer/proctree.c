@@ -2422,6 +2422,7 @@ END_SORT_FUNCTION
 
 BEGIN_SORT_FUNCTION(ParentPid)
 {
+    sortResult = uintptrcmp((ULONG_PTR)processItem1->ParentProcessId, (ULONG_PTR)processItem2->ParentProcessId);
 }
 END_SORT_FUNCTION
 
