@@ -40,6 +40,18 @@ typedef struct _PH_THREAD_ITEM
     KWAIT_REASON WaitReason;
     KPRIORITY BasePriorityIncrement;
 
+    union
+    {
+        BOOLEAN Flags;
+        struct
+        {
+            BOOLEAN JustResolved : 1;
+            BOOLEAN IsGuiThread : 1;
+            BOOLEAN PowerThrottling : 1;
+            BOOLEAN Spare : 5;
+        };
+    };
+
     HANDLE ThreadHandle;
 
     PPH_STRING ServiceName;
@@ -47,10 +59,11 @@ typedef struct _PH_THREAD_ITEM
     ULONG64 StartAddress;
     PPH_STRING StartAddressString;
     PPH_STRING StartAddressFileName;
-    enum _PH_SYMBOL_RESOLVE_LEVEL StartAddressResolveLevel;
+    ULONG StartAddressResolveLevel;
 
-    BOOLEAN IsGuiThread;
-    BOOLEAN JustResolved;
+    ULONG64 NativeStartAddress;
+    PPH_STRING NativeStartAddressString;
+
     WCHAR ThreadIdString[PH_INT32_STR_LEN_1];
     WCHAR ThreadIdHexString[PH_PTR_STR_LEN_1];
     WCHAR LxssThreadIdString[PH_INT32_STR_LEN_1];
@@ -58,7 +71,6 @@ typedef struct _PH_THREAD_ITEM
     IO_COUNTERS IoCounters;
 
     ULONG LxssThreadId;
-    BOOLEAN PowerThrottling;
 } PH_THREAD_ITEM, *PPH_THREAD_ITEM;
 
 typedef enum _PH_KNOWN_PROCESS_TYPE PH_KNOWN_PROCESS_TYPE;
