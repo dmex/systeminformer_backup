@@ -148,11 +148,47 @@ VOID PhpFreeImageCoherencyContext(
         PhUnloadMappedImage(&Context->MappedImage);
         PhUnloadRemoteMappedImage(&Context->RemoteMappedImage);
 
-        if (Context->MappedImageReloc)
-            PhDereferenceObject(Context->MappedImageReloc);
+        PhClearReference(&Context->MappedImageReloc);
 
         PhFree(Context);
     }
+}
+
+static NTSTATUS NTAPI PhImageCoherencyImageRelocationCallback(
+    _In_ PPH_MAPPED_IMAGE MappedImage,
+    _In_ PIMAGE_DATA_DIRECTORY ImageDataDirectory,
+    _In_ PIMAGE_BASE_RELOCATION ImageRelocationDirectory,
+    _In_ PIMAGE_RELOCATION_RECORD ImageRelocations,
+    _In_ ULONG ImageRelocationsCount,
+    _In_ ULONG ImageRelocationsTotal,
+    _In_ PPH_IMAGE_COHERENCY_CONTEXT Context
+    )
+{
+    for (ULONG i = 0; i < ImageRelocationsCount; i++)
+    {
+        if ((ImageRelocations[i].Type != IMAGE_REL_BASED_ABSOLUTE) &&
+            (ImageRelocations[i].Type != IMAGE_REL_BASED_RESERVED))
+        {
+            PVOID rva = PTR_ADD_OFFSET(ImageRelocationDirectory->VirtualAddress, ImageRelocations[i].Offset);
+
+            if (ImageRelocations[i].Type == IMAGE_REL_BASED_DIR64)
+            {
+                PhAddItemSimpleHashtable(Context->MappedImageReloc, rva, UlongToPtr(8));
+            }
+            else
+            {
+                //
+                // For now, we're just going to do a 4 byte skip for
+                // all other relocations. This could probably use some
+                // work for higher accuracy.
+                //
+
+                PhAddItemSimpleHashtable(Context->MappedImageReloc, rva, UlongToPtr(4));
+            }
+        }
+    }
+
+    return STATUS_SUCCESS;
 }
 
 /**
@@ -206,7 +242,6 @@ PPH_IMAGE_COHERENCY_CONTEXT PhpCreateImageCoherencyContext(
 
     if (NT_SUCCESS(context->MappedImageStatus))
     {
-        PH_MAPPED_IMAGE_RELOC relocs;
         PH_MAPPED_IMAGE_DYNAMIC_RELOC dynRelocs;
         PIMAGE_DATA_DIRECTORY directory;
 
@@ -215,50 +250,13 @@ PPH_IMAGE_COHERENCY_CONTEXT PhpCreateImageCoherencyContext(
         // This hash table will map the RVA to the number of bytes to skip.
         //
 
-        context->MappedImageReloc = PhCreateSimpleHashtable(10);
+        context->MappedImageReloc = PhCreateSimpleHashtable(100);
 
-        if (NT_SUCCESS(PhGetMappedImageRelocations(&context->MappedImage, &relocs)))
-        {
-            for (ULONG i = 0; i < relocs.NumberOfEntries; i++)
-            {
-                PPH_IMAGE_RELOC_ENTRY entry;
-
-                entry = &relocs.RelocationEntries[i];
-
-                if ((entry->Record.Type != IMAGE_REL_BASED_ABSOLUTE) &&
-                    (entry->Record.Type != IMAGE_REL_BASED_RESERVED))
-                {
-                    ULONG_PTR rva;
-
-                    rva = (ULONG_PTR)entry->BlockRva + entry->Record.Offset;
-
-                    if (entry->Record.Type == IMAGE_REL_BASED_DIR64)
-                    {
-                        PhAddItemSimpleHashtable(
-                            context->MappedImageReloc,
-                            (PVOID)rva,
-                            ULongToPtr(8)
-                            );
-                    }
-                    else
-                    {
-                        //
-                        // For now, we're just going to do a 4 byte skip for
-                        // all other relocations. This could probably use some
-                        // work for higher accuracy.
-                        //
-
-                        PhAddItemSimpleHashtable(
-                            context->MappedImageReloc,
-                            (PVOID)rva,
-                            ULongToPtr(4)
-                            );
-                    }
-                }
-            }
-
-            PhFreeMappedImageRelocations(&relocs);
-        }
+        PhMappedImageEnumerateRelocations(
+            &context->MappedImage,
+            PhImageCoherencyImageRelocationCallback,
+            context
+            );
 
         if (NT_SUCCESS(PhGetMappedImageDynamicRelocations(&context->MappedImage, &dynRelocs)))
         {
@@ -273,6 +271,7 @@ PPH_IMAGE_COHERENCY_CONTEXT PhpCreateImageCoherencyContext(
                 if (entry->Symbol == IMAGE_DYNAMIC_RELOCATION_ARM64X)
                 {
                     rva = (ULONG_PTR)entry->ARM64X.BlockRva + entry->ARM64X.RecordFixup.Offset;
+
                     switch (entry->ARM64X.RecordFixup.Type)
                     {
                     case IMAGE_DVRT_ARM64X_FIXUP_TYPE_ZEROFILL:
@@ -310,6 +309,7 @@ PPH_IMAGE_COHERENCY_CONTEXT PhpCreateImageCoherencyContext(
                 else if (entry->Symbol == IMAGE_DYNAMIC_RELOCATION_FUNCTION_OVERRIDE)
                 {
                     rva = (ULONG_PTR)entry->FuncOverride.BlockRva + entry->FuncOverride.Record.Offset;
+
                     if (context->MappedImage.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
                         size = 4;
                     else if (context->MappedImage.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
@@ -323,6 +323,7 @@ PPH_IMAGE_COHERENCY_CONTEXT PhpCreateImageCoherencyContext(
                     if (entry->Other.Record.Type == IMAGE_REL_BASED_ABSOLUTE)
                     {
                         rva = (ULONG_PTR)entry->Other.BlockRva + entry->Other.Record.Offset;
+
                         if (context->MappedImage.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
                             size = 4;
                         else if (context->MappedImage.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
@@ -337,7 +338,7 @@ PPH_IMAGE_COHERENCY_CONTEXT PhpCreateImageCoherencyContext(
             PhFreeMappedImageDynamicRelocations(&dynRelocs);
         }
 
-        if (NT_SUCCESS(PhGetMappedImageDataEntry(
+        if (NT_SUCCESS(PhGetMappedImageDataDirectory(
             &context->MappedImage,
             IMAGE_DIRECTORY_ENTRY_IAT,
             &directory
@@ -659,7 +660,7 @@ ULONG CALLBACK PhpImgCoherencySkip(
         // Look up the RVA in our hash table, if we find one we will skip the
         // number of bytes stored in the hash table for that entry.
         //
-        entry = PhFindItemSimpleHashtable(context->MappedImageReloc, PTR_ADD_OFFSET(NULL, Rva));
+        entry = PhFindItemSimpleHashtable(context->MappedImageReloc, UlongToPtr(Rva));
         if (entry)
             return PtrToUlong(*entry);
     }
@@ -843,7 +844,7 @@ VOID PhpAnalyzeImageCoherencyCommonAsManaged(
     //
     // Get the COM32 directory bytes
     //
-    if (!NT_SUCCESS(PhGetMappedImageDataEntry(
+    if (!NT_SUCCESS(PhGetMappedImageDataDirectory(
         &Context->MappedImage,
         IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR,
         &dataDirectory
@@ -906,7 +907,7 @@ BOOLEAN PhpAnalyzeImageCoherencyIsDotNet (
     //
     // Get the com descriptor directly, if it doesn't exist it isn't .NET
     //
-    if (!NT_SUCCESS(PhGetMappedImageDataEntry(
+    if (!NT_SUCCESS(PhGetMappedImageDataDirectory(
         &Context->MappedImage,
         IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR,
         &dataDirectory
