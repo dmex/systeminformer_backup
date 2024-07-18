@@ -196,6 +196,7 @@ BOOLEAN PhSipCpuSectionCallback(
             // %.2f%% (K: %.2f%%, U: %.2f%%)\n%s\n%s
             PhInitFormatF(&format[0], (cpuKernel + cpuUser) * 100.f, PhMaxPrecisionUnit);
             PhInitFormatS(&format[1], L"% (K: ");
+            PhInitFormatF(&format[2], cpuKernel * 100.f, PhMaxPrecisionUnit);
             PhInitFormatS(&format[3], L"%, U: ");
             PhInitFormatF(&format[4], cpuUser * 100.f, PhMaxPrecisionUnit);
             PhInitFormatS(&format[5], L"%)");
