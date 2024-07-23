@@ -1,14 +1,6 @@
 # Auto detect text files
 * text=crlf
 
-# Custom for Visual Studio
-*.cs diff=csharp
-*.sln merge=union
-*.csproj merge=union
-*.vbproj merge=union
-*.fsproj merge=union
-*.dbproj merge=union
-
 # Project files
 *.bat eol=crlf
 *.c eol=crlf
@@ -46,13 +38,17 @@
 **LICENCE eol=crlf
 **README eol=crlf
 
-*.bmp binary
+# Binary files 
+*.bin binary
+*.bmp binary -delta
 *.dll binary
 *.exe binary
-*.ico binary
+*.ico binary -delta
+*.jpg binary -delta
+*.jpeg binary -delta
 *.lib binary
 *.pdb binary
-*.png binary
+*.png binary -delta
 *.s binary
 *.sys binary
 
