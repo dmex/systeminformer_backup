@@ -46,6 +46,7 @@
 ipch/
 .vs/
 **/packages/
+**/vcpkg_installed/*
 
 # Visual Studio profiler
 *.psess
